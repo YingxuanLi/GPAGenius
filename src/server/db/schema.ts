@@ -2,11 +2,13 @@ import { relations, sql } from "drizzle-orm";
 import {
   index,
   integer,
+  jsonb,
   pgTableCreator,
   primaryKey,
   serial,
   text,
   timestamp,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
@@ -128,3 +130,22 @@ export const verificationTokens = createTable(
     compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
   })
 );
+
+export const courses = createTable("course", {
+  id: uuid("id")
+  .notNull()
+  .primaryKey()
+  .defaultRandom(),
+  courseCode: varchar("course_code", { length: 20 }).notNull(),
+  courseName: varchar("course_name").notNull(),
+  description: text("description"),
+  assignments: jsonb("assignemnts"),
+  createdBy: varchar("creted_by"),
+  updatedBy: varchar("updated_by"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
+      () => new Date()
+    )
+});
