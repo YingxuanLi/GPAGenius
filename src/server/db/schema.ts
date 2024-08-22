@@ -5,6 +5,7 @@ import {
   jsonb,
   pgTableCreator,
   primaryKey,
+  real,
   serial,
   text,
   timestamp,
@@ -33,13 +34,13 @@ export const posts = createTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
-      () => new Date()
+      () => new Date(),
     ),
   },
   (example) => ({
     createdByIdIdx: index("created_by_idx").on(example.createdById),
     nameIndex: index("name_idx").on(example.name),
-  })
+  }),
 );
 
 export const users = createTable("user", {
@@ -86,7 +87,7 @@ export const accounts = createTable(
       columns: [account.provider, account.providerAccountId],
     }),
     userIdIdx: index("account_user_id_idx").on(account.userId),
-  })
+  }),
 );
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -109,7 +110,7 @@ export const sessions = createTable(
   },
   (session) => ({
     userIdIdx: index("session_user_id_idx").on(session.userId),
-  })
+  }),
 );
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -128,24 +129,23 @@ export const verificationTokens = createTable(
   },
   (vt) => ({
     compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
-  })
+  }),
 );
 
 export const courses = createTable("course", {
-  id: uuid("id")
-  .notNull()
-  .primaryKey()
-  .defaultRandom(),
-  courseCode: varchar("course_code", { length: 20 }).notNull(),
-  courseName: varchar("course_name").notNull(),
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
+  courseCode: varchar("course_code", { length: 64 }).notNull(),
+  courseName: varchar("course_name", { length: 255 }).notNull(),
+  semester: varchar("semester", { length: 255 }).notNull(),
+  credit: real("credit").notNull(),
   description: text("description"),
-  assignments: jsonb("assignemnts"),
-  createdBy: varchar("creted_by"),
+  assessments: jsonb("assessments"),
+  createdBy: varchar("created_by"),
   updatedBy: varchar("updated_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
-      () => new Date()
-    )
+  updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
+    () => new Date(),
+  ),
 });
