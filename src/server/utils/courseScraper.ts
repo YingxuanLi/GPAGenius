@@ -1,7 +1,25 @@
 import axios from "axios";
-import * as cheerio from 'cheerio';
-import * as fs from "fs";
-// import * as path from "path";
+import * as cheerio from "cheerio";
+
+interface LegacyAssessmentDetails {
+  task: string;
+  dueDate: string;
+  weight: string;
+  objectives: string
+}
+
+interface AssessmentDetail {
+  title: string;
+  mode: string;
+  category: string;
+  weight: string;
+  dueDate: string;
+  taskDescription: string;
+  learningOutcomes?: string;
+  hurdleRequirements?: string;
+  additionalDetails?: Record<string, string>;
+  isHurdled?: boolean;
+}
 
 class CourseNotFoundError extends Error {
   constructor(course: string) {
@@ -42,7 +60,7 @@ const getPage = async (
   };
 
   const page = await axios.get(link, { headers });
- 
+
   const $ = cheerio.load(page.data);
 
   if ($("#course-notfound").length) {
@@ -64,9 +82,9 @@ const getPage = async (
   }
 };
 
-const getTableOld = async (
+const getLegacyCourseProfileAssessments = async (
   sectionCode: string,
-): Promise<Array<[string, string]>> => {
+): Promise<LegacyAssessmentDetails[]> => {
   const headers = {
     "User-Agent": "My User Agent 1.0",
   };
@@ -74,144 +92,142 @@ const getTableOld = async (
   const url = `https://archive.course-profiles.uq.edu.au/student_section_loader/section_5/${sectionCode}`;
 
   const page = await axios.get(url, { headers });
- const data = page.data
+  const data = page.data;
 
   const $ = cheerio.load(data);
-  const table = $('table').first(); // Assuming the first table is the one we need
-let assessments: any = []
-table.find('tbody tr').each((_, row) => {
-    const cells = $(row).find('td');
+  const table = $("table").first(); 
+  let assessments: any = [];
+  table.find("tbody tr").each((_, row) => {
+    const cells = $(row).find("td");
 
     // Extract the data from each cell
-    const task = cells.eq(0).text().trim().replace(/\s+/g, ' ');
-    const dueDate = cells.eq(1).text().trim().replace(/\s+/g, ' ');
+    const task = cells.eq(0).text().trim().replace(/\s+/g, " ");
+    const dueDate = cells.eq(1).text().trim().replace(/\s+/g, " ");
     const weight = cells.eq(2).text().trim();
-    const objectives = cells.eq(3).text().trim().replace(/\s+/g, ' ');
+    const objectives = cells.eq(3).text().trim().replace(/\s+/g, " ");
 
     assessments.push({ task, dueDate, weight, objectives });
   });
-  return assessments
+  return assessments;
 };
 
 const getTable = async (
   semester: number,
   year: number,
   sectionCode: string,
-): Promise<Array<[string, string]>> => {
+): Promise<LegacyAssessmentDetails[] | AssessmentDetail[]> => {
   const headers = {
     "User-Agent": "My User Agent 1.0",
   };
 
   if ((year === 2024 && semester === 1) || year < 2024) {
-    console.log('use old table')
-    return getTableOld(sectionCode);
+    return getLegacyCourseProfileAssessments(sectionCode);
   }
 
   const url = `https://course-profiles.uq.edu.au/course-profiles/${sectionCode}#assessment`;
-  const page = await axios.get(url, { headers });
-  const $ = cheerio.load(page.data);
+  try {
+    const { data } = await axios.get(url, { headers });
+    const $ = cheerio.load(data);
 
-  $("ul.icon-list").remove();
+    const assessments: AssessmentDetail[] = [];
 
-  const table = $("table");
-  const rows = table.find("tbody tr");
-  const data: Array<[string, string]> = [];
+    // Select the section containing assessment details
+    const assessmentSection = $("#assessment-details");
 
-//   console.info('ROWS', rows)
-//   fs.writeFileSync('file.txt', $(row))
-
-  rows.each((_, row) => {
-    console.log(row)
-    const cols = $(row).find("td");
-    const task = cols.eq(0).text().trim();
-    let weight = cols.eq(1).text().trim();
-    console.log('weight', weight)
-    console.log('task', task)
-
-    if (!weight.includes("%") && !isNaN(Number(weight))) {
-      const percentage = (100 / rows.length).toFixed(2);
-      weight = `${percentage}%`;
-    }
-
-    data.push([task, weight.replace("%", "") + "%"]);
-  });
-
-
-  return data;
-};
-
-const getTable2 = async() => {
-    const headers = {
-        "User-Agent": "My User Agent 1.0",
+    // Loop through each assessment detail
+    assessmentSection.find("h3").each((_, element) => {
+      const title = $(element).text().trim();
+      const assessment: AssessmentDetail = {
+        title,
+        mode: "",
+        category: "",
+        weight: "",
+        dueDate: "",
+        taskDescription: "",
+        hurdleRequirements: "",
       };
-  const url = `https://archive.course-profiles.uq.edu.au/student_section_loader/section_5/131990`;
-  const page = await axios.get(url, { headers });
-  const $ = cheerio.load(page.data);
-    const table = $('table').first(); // Assuming the first table is the one we need
 
-    // Iterate over each row in the table's tbody
-    table.find('tbody tr').each((_, row) => {
-      const cells = $(row).find('td');
+      // Find the corresponding dl (definition list) for this assessment
+      const dl = $(element).nextAll("dl").first();
 
-      // Extract the data from each cell
-      const task = cells.eq(0).text().trim().replace(/\s+/g, ' ');
-      const dueDate = cells.eq(1).text().trim().replace(/\s+/g, ' ');
-      const weight = cells.eq(2).text().trim();
-      const objectives = cells.eq(3).text().trim().replace(/\s+/g, ' ');
+      dl.find("dt").each((i, dt) => {
+        const key = $(dt).text().trim();
+        const value = $(dt).next("dd").text().trim();
 
-      console.info({task, dueDate, weight, objectives})
-      // Add the extracted data to the assessments array
-    //   assessments.push({ task, dueDate, weight, objectives });
+        switch (key) {
+          case "Mode":
+            assessment.mode = value;
+            break;
+          case "Category":
+            assessment.category = value;
+            break;
+          case "Weight":
+            assessment.weight = value;
+            break;
+          case "Due date":
+            assessment.dueDate = value;
+            break;
+          case "Learning outcomes":
+            assessment.learningOutcomes = value;
+            break;
+          default:
+            assessment.additionalDetails = {
+              ...assessment.additionalDetails,
+              [key]: value,
+            };
+            break;
+        }
+      });
+
+      // Find the task description
+      const taskDescriptionElement = $(element)
+        .nextAll("div.collapsible")
+        .first();
+      assessment.taskDescription = taskDescriptionElement
+        .find("p")
+        .first()
+        .text()
+        .trim();
+
+      // Check for hurdle requirements
+      const iconList = $(element).next("ul.icon-list").first();
+      const isHurdle = iconList.text().includes("Hurdle");
+      assessment.isHurdled = isHurdle;
+
+      // Store the extracted assessment detail
+      assessments.push(assessment);
     });
-    
-}
 
-// getTable2()
+    return assessments;
+  } catch (error) {
+    console.error("Error scraping assessment details:", error);
+    throw error;
+  }
+};
 
 const getAssessments = async (
   code: string,
   semester: string,
   year: string,
-): Promise<Array<[string, string]>> => {
+) => {
   const courseProfile = await getPage(code, semester, year);
   if (!courseProfile) {
     throw new WrongSemesterError(code, semester);
   }
-
+  
   const sectionCode = courseProfile.split("/").pop()!;
-  console.log('section Code',sectionCode)
+  console.log("section Code", sectionCode);
   const assessments = await getTable(
     Number(semester),
     Number(year),
     sectionCode,
   );
 
-//   console.info(assessments)
-
-//   const logData = `${Date.now()}|${code}|${semester}|${year}\n`;
-//   fs.appendFileSync(path.join(THIS_FOLDER, "logs", "new_log.txt"), logData);
-
-//   const discordData = {
-//     content: "",
-//     username: "UQmarks",
-//     embeds: [
-//       {
-//         description: `${semester} ${year}`,
-//         title: `${code} - NEW CODE`,
-//       },
-//     ],
-//   };
-
-  // Example Discord logging, uncomment if necessary
-  // await axios.post(process.env.LOG_LINK!, discordData, { headers });
-
   return assessments;
 };
 
-const res = await getAssessments('CSSE2002', '2', '2023')
-console.log(res)
-// @ts-ignore
-// fs.writeFileSync('testfile.txt', res.toString())
-// console.info(res)
+const res = await getAssessments("CSSE1001", "2", "2024");
+console.log(res);
+
 
 export { CourseNotFoundError, WrongSemesterError, getAssessments };
