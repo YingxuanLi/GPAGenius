@@ -7,8 +7,8 @@ import {
 import { courses } from "~/server/db/schema";
 import { getCourseAndAssessments } from "~/server/utils/courseScraper";
 
-//@ts-ignore
-const insertCourse = async ({ ctx, input }) => {
+type courseInput = typeof courses.$inferInsert
+const insertCourse = async ({ ctx, input }: {ctx: any, input: courseInput}) => {
   // console.info(input)
   const course = await ctx.db
     .insert(courses)
@@ -78,7 +78,6 @@ export const courseRouter = createTRPCRouter({
           ),
       });
       if (!course) {
-        //   await course.create
         const { courseName, courseCode, units, assessments } =
           await getCourseAndAssessments(
             input.courseCode,
@@ -88,9 +87,9 @@ export const courseRouter = createTRPCRouter({
         const formattedInput = {
           //TODO: refactor this to refer to university table in the future
           university: "UQ",
-          courseCode,
+          courseCode: courseCode ? courseCode : input.courseCode,
           courseName,
-          credit: units,
+          credit: Number(units),
           assessments,
           year: input.year,
           semester: input.semester,
@@ -98,7 +97,6 @@ export const courseRouter = createTRPCRouter({
           updatedBy: "system",
         };
         course = await insertCourse({ ctx, input: formattedInput });
-        // console.info('test', courseInserted)
       }
       return course ?? null;
     }),
