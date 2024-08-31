@@ -27,7 +27,7 @@ export const posts = createTable(
   {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 256 }),
-    createdById: varchar("created_by", { length: 255 })
+    createdById: varchar("created_by")  
       .notNull()
       .references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -44,7 +44,7 @@ export const posts = createTable(
 );
 
 export const users = createTable("user", {
-  id: varchar("id", { length: 255 })
+  id: varchar("id")
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -59,12 +59,14 @@ export const users = createTable("user", {
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
+  enrollments: many(enrollments),
+  userAssessments: many(userAssessments),
 }));
 
 export const accounts = createTable(
   "account",
   {
-    userId: varchar("user_id", { length: 255 })
+    userId: varchar("user_id")
       .notNull()
       .references(() => users.id),
     type: varchar("type", { length: 255 })
@@ -100,7 +102,7 @@ export const sessions = createTable(
     sessionToken: varchar("session_token", { length: 255 })
       .notNull()
       .primaryKey(),
-    userId: varchar("user_id", { length: 255 })
+    userId: varchar("user_id")
       .notNull()
       .references(() => users.id),
     expires: timestamp("expires", {
@@ -132,20 +134,87 @@ export const verificationTokens = createTable(
   }),
 );
 
-export const courses = createTable("course", {
+export const course = createTable("course", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
   courseCode: varchar("course_code", { length: 64 }).notNull(),
   courseName: varchar("course_name", { length: 255 }).notNull(),
+  university: varchar("university", { length: 255 }).notNull(),
+  year: integer("year").notNull(),
   semester: varchar("semester", { length: 255 }).notNull(),
   credit: real("credit").notNull(),
   description: text("description"),
   assessments: jsonb("assessments"),
-  createdBy: varchar("created_by"),
-  updatedBy: varchar("updated_by"),
+  createdBy: varchar("created_by")  
+    .references(() => users.id),
+  updatedBy: varchar("updated_by") 
+    .references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
     () => new Date(),
   ),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
+
+
+export const coursesRelations = relations(course, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [course.createdBy],
+    references: [users.id],
+  }),
+  updatedByUser: one(users, {
+    fields: [course.updatedBy],
+    references: [users.id],
+  }),
+  enrollments: many(enrollments),
+  userAssessments: many(userAssessments),
+}));
+
+export const enrollments = createTable("enrollment", {
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
+  courseId: uuid("course_id")
+    .notNull()
+    .references(() => course.id),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
+    () => new Date(),
+  ),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
+  course: one(course, { fields: [enrollments.courseId], references: [course.id] }),
+  user: one(users, { fields: [enrollments.userId], references: [users.id] }),
+}));
+
+export const userAssessments = createTable("user_assessment", {
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
+  assignmentName: varchar("assignment_name", { length: 255 }).notNull(),
+  weight: real("weight").notNull(),
+  mark: real("mark").notNull(),
+  maxMark: real("max_mark").notNull(),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  courseId: uuid("course_id")
+    .notNull()
+    .references(() => course.id),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
+    () => new Date(),
+  ),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const userAssessmentsRelations = relations(userAssessments, ({ one }) => ({
+  user: one(users, { fields: [userAssessments.userId], references: [users.id] }),
+  course: one(course, { fields: [userAssessments.courseId], references: [course.id] }),
+}));
