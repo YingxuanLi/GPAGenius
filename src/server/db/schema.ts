@@ -27,7 +27,7 @@ export const posts = createTable(
   {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 256 }),
-    createdById: varchar("created_by")  
+    createdById: varchar("created_by")
       .notNull()
       .references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -134,7 +134,7 @@ export const verificationTokens = createTable(
   }),
 );
 
-export const course = createTable("course", {
+export const courses = createTable("course", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
   courseCode: varchar("course_code", { length: 64 }).notNull(),
   courseName: varchar("course_name", { length: 255 }).notNull(),
@@ -144,10 +144,8 @@ export const course = createTable("course", {
   credit: real("credit").notNull(),
   description: text("description"),
   assessments: jsonb("assessments"),
-  createdBy: varchar("created_by")  
-    .references(() => users.id),
-  updatedBy: varchar("updated_by") 
-    .references(() => users.id),
+  createdBy: varchar("created_by").references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
@@ -157,14 +155,13 @@ export const course = createTable("course", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-
-export const coursesRelations = relations(course, ({ one, many }) => ({
+export const courseRelations = relations(courses, ({ one, many }) => ({
   createdByUser: one(users, {
-    fields: [course.createdBy],
+    fields: [courses.createdBy],
     references: [users.id],
   }),
   updatedByUser: one(users, {
-    fields: [course.updatedBy],
+    fields: [courses.updatedBy],
     references: [users.id],
   }),
   enrollments: many(enrollments),
@@ -175,7 +172,7 @@ export const enrollments = createTable("enrollment", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
   courseId: uuid("course_id")
     .notNull()
-    .references(() => course.id),
+    .references(() => courses.id),
   userId: varchar("user_id")
     .notNull()
     .references(() => users.id),
@@ -189,7 +186,10 @@ export const enrollments = createTable("enrollment", {
 });
 
 export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
-  course: one(course, { fields: [enrollments.courseId], references: [course.id] }),
+  course: one(courses, {
+    fields: [enrollments.courseId],
+    references: [courses.id],
+  }),
   user: one(users, { fields: [enrollments.userId], references: [users.id] }),
 }));
 
@@ -204,7 +204,7 @@ export const userAssessments = createTable("user_assessment", {
     .references(() => users.id),
   courseId: uuid("course_id")
     .notNull()
-    .references(() => course.id),
+    .references(() => courses.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
@@ -214,7 +214,16 @@ export const userAssessments = createTable("user_assessment", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export const userAssessmentsRelations = relations(userAssessments, ({ one }) => ({
-  user: one(users, { fields: [userAssessments.userId], references: [users.id] }),
-  course: one(course, { fields: [userAssessments.courseId], references: [course.id] }),
-}));
+export const userAssessmentsRelations = relations(
+  userAssessments,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userAssessments.userId],
+      references: [users.id],
+    }),
+    course: one(courses, {
+      fields: [userAssessments.courseId],
+      references: [courses.id],
+    }),
+  }),
+);

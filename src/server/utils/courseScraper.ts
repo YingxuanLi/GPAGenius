@@ -205,7 +205,11 @@ const getTable = async (
   }
 };
 
-const getCourseAndAssessments = async (code: string, semester: string, year: string) => {
+const getCourseAndAssessments = async (
+  code: string,
+  semester: string,
+  year: string,
+) => {
   const courseProfile = await getPage(code, semester, year);
   if (!courseProfile) {
     throw new WrongSemesterError(code, semester);
@@ -219,14 +223,12 @@ const getCourseAndAssessments = async (code: string, semester: string, year: str
     sectionCode,
   );
 
-  const courseInfo = await getCourseInfo(sectionCode)
+  const { courseName, courseCode, units } = await getCourseInfo(sectionCode);
 
-  return {courseInfo, assessments};
+  return { courseName, courseCode, units, assessments };
 };
 
-const getCourseInfo = async (
-  sectionCode: String
-) => {
+const getCourseInfo = async (sectionCode: String) => {
   const url = `https://course-profiles.uq.edu.au/course-profiles/${sectionCode}#course-overview`;
   const headers = {
     "User-Agent": "My User Agent 1.0",
@@ -236,28 +238,29 @@ const getCourseInfo = async (
 
   const $ = cheerio.load(data);
   const overviewSection = $("#course-overview");
-  const courseHeading = $('h1').text();
+  const courseHeading = $("h1").text();
   //TODO: fix ts
   //@ts-ignore
-  const courseName = courseHeading.match(/^[^(]+/)[0].trim()
+  const courseName = courseHeading.match(/^[^(]+/)[0].trim();
   //@ts-ignore
-  const courseCode = courseHeading!.match(/\(([^)]+)\)/)[1]; 
-  const units = overviewSection.find('dt')
-  .filter((_, element) => $(element).text().trim() === 'Units')
-  .next('dd')
-  .text()
-  .trim();
+  const courseCode = courseHeading!.match(/\(([^)]+)\)/)[1];
+  const units = overviewSection
+    .find("dt")
+    .filter((_, element) => $(element).text().trim() === "Units")
+    .next("dd")
+    .text()
+    .trim();
 
-  console.log('name', courseName)
-  console.log('name', courseCode)
-  console.log('unit', units)
+  console.log("name", courseName);
+  console.log("name", courseCode);
+  console.log("unit", units);
 
   const info = {
     courseName,
     courseCode,
-    units
-  }
-  return info
+    units,
+  };
+  return info;
 };
 
 const res = await getCourseAndAssessments("CSSE1001", "2", "2024");
