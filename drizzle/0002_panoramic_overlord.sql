@@ -1,1 +1,0 @@
-ALTER TABLE "gpa-genius_course" ADD COLUMN "semester" varchar NOT NULL;
