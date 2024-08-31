@@ -4,10 +4,6 @@ import { NextResponse } from "next/server";
 import { renderTrpcPanel } from "@metamorph/trpc-panel";
 import { appRouter } from "~/server/api/root"; // Adjust the path as needed
 
-export const config = {
-  // runtime: "edge", // Use Edge Runtime for improved performance
-};
-
 const handler = async (_: NextRequest) => {
   const panelHtml = renderTrpcPanel(appRouter, {
     url: "http://localhost:3001/api/trpc", // Ensure this is your tRPC endpoint
