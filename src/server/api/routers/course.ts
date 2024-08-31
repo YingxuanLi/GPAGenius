@@ -7,8 +7,14 @@ import {
 import { courses } from "~/server/db/schema";
 import { getCourseAndAssessments } from "~/server/utils/courseScraper";
 
-type courseInput = typeof courses.$inferInsert
-const insertCourse = async ({ ctx, input }: {ctx: any, input: courseInput}) => {
+type courseInput = typeof courses.$inferInsert;
+const insertCourse = async ({
+  ctx,
+  input,
+}: {
+  ctx: any;
+  input: courseInput;
+}) => {
   // console.info(input)
   const course = await ctx.db
     .insert(courses)
@@ -18,13 +24,13 @@ const insertCourse = async ({ ctx, input }: {ctx: any, input: courseInput}) => {
       year: input.year,
       semester: input.semester,
       credit: input.credit,
-      university: input.university,
+      universityId: input.universityId,
       description: input.description,
       assessments: input.assessments,
       createdBy: input.createdBy || ctx.session.user.id, // Assuming user ID is stored in session
     })
     .returning();
-    console.info('create by', course.createdBy)
+  console.info("create by", course.createdBy);
   return course;
 };
 
@@ -34,7 +40,7 @@ export const courseRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
       z.object({
-        university: z.string(),
+        universityId: z.string().uuid(),
         courseCode: z.string().min(1).max(64),
         courseName: z.string().min(1).max(255),
         semester: z.string().min(1).max(255),
@@ -61,7 +67,7 @@ export const courseRouter = createTRPCRouter({
   getCourseByCodeAndSemester: publicProcedure
     .input(
       z.object({
-        university: z.string(),
+        universityId: z.string().uuid(),
         courseCode: z.string(),
         year: z.number(),
         semester: z.string(),
@@ -71,7 +77,7 @@ export const courseRouter = createTRPCRouter({
       let course = await ctx.db.query.courses.findFirst({
         where: (courses, { eq, and }) =>
           and(
-            eq(courses.university, input.university),
+            eq(courses.universityId, input.universityId),
             eq(courses.courseCode, input.courseCode),
             eq(courses.year, input.year),
             eq(courses.semester, input.semester),
@@ -85,8 +91,8 @@ export const courseRouter = createTRPCRouter({
             input.year.toString(),
           );
         const formattedInput = {
-          //TODO: refactor this to refer to university table in the future
-          university: "UQ",
+          //TODO: refactor this to get uni id
+          universityId: "ae376fd2-a7c7-4f08-a480-5f6d99873c95",
           courseCode: courseCode ? courseCode : input.courseCode,
           courseName,
           credit: Number(units),
@@ -100,5 +106,4 @@ export const courseRouter = createTRPCRouter({
       }
       return course ?? null;
     }),
-
 });

@@ -22,6 +22,12 @@ import { type AdapterAccount } from "next-auth/adapters";
  */
 export const createTable = pgTableCreator((name) => `gpa-genius_${name}`);
 
+export const universities = createTable("university", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  logoUrl: varchar("logo_url"),
+});
+
 export const posts = createTable(
   "post",
   {
@@ -55,11 +61,13 @@ export const users = createTable("user", {
     withTimezone: true,
   }).default(sql`CURRENT_TIMESTAMP`),
   image: varchar("image", { length: 255 }),
+  universityId: uuid("university_id").references(() => universities.id),
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   accounts: many(accounts),
   enrollments: many(enrollments),
+  universities: one(universities),
   userAssessments: many(userAssessments),
 }));
 
@@ -138,7 +146,7 @@ export const courses = createTable("course", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
   courseCode: varchar("course_code", { length: 64 }).notNull(),
   courseName: varchar("course_name", { length: 255 }).notNull(),
-  university: varchar("university", { length: 255 }).notNull(),
+  universityId: uuid('university_id').references(() => universities.id).notNull(),
   year: integer("year").notNull(),
   semester: varchar("semester", { length: 255 }).notNull(),
   credit: real("credit").notNull(),
