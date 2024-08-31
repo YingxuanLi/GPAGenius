@@ -6,6 +6,7 @@
 # Project specific
 .next
 .env
+.vscode
 
 # User-specific files
 *.rsuser
