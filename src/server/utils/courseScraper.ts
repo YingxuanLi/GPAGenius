@@ -1,14 +1,14 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-interface LegacyAssessmentDetails {
+export interface LegacyAssessmentDetails {
   task: string;
   dueDate: string;
   weight: string;
   objectives: string;
 }
 
-interface AssessmentDetail {
+export interface AssessmentDetail {
   title: string;
   mode: string;
   category: string;
@@ -229,6 +229,7 @@ const getCourseAndAssessments = async (
 };
 
 const getCourseInfo = async (sectionCode: String) => {
+  console.log('executed at ' + new Date())
   const url = `https://course-profiles.uq.edu.au/course-profiles/${sectionCode}#course-overview`;
   const headers = {
     "User-Agent": "My User Agent 1.0",
@@ -263,7 +264,5 @@ const getCourseInfo = async (sectionCode: String) => {
   return info;
 };
 
-const res = await getCourseAndAssessments("CSSE1001", "2", "2024");
-console.log(res);
 
 export { CourseNotFoundError, WrongSemesterError, getCourseAndAssessments };

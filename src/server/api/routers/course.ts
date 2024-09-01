@@ -8,6 +8,26 @@ import { courses } from "~/server/db/schema";
 import { getCourseAndAssessments } from "~/server/utils/courseScraper";
 
 type courseInput = typeof courses.$inferInsert;
+export const legacyAssessmentDetailsSchema = z.object({
+  task: z.string(),
+  dueDate: z.string().optional(),
+  weight: z.string(),
+  objectives: z.string().optional()
+})
+
+export const assessmentDetailSchema = z.object({
+  title: z.string(),
+  mode: z.string().optional(),
+  category: z.string().optional(),
+  weight: z.string(),
+  dueDate: z.string().optional(),
+  taskDescription: z.string().optional(),
+  learningOutcomes: z.string().optional(),
+  hurdleRequirements: z.string().optional(),
+  additionalDetails: z.record(z.string()).optional(),
+  isHurdled: z.boolean().optional()
+})
+
 const insertCourse = async ({
   ctx,
   input,
@@ -15,7 +35,6 @@ const insertCourse = async ({
   ctx: any;
   input: courseInput;
 }) => {
-  // console.info(input)
   const course = await ctx.db
     .insert(courses)
     .values({
@@ -30,7 +49,6 @@ const insertCourse = async ({
       createdBy: input.createdBy || ctx.session.user.id, // Assuming user ID is stored in session
     })
     .returning();
-  console.info("create by", course.createdBy);
   return course;
 };
 
@@ -47,11 +65,12 @@ export const courseRouter = createTRPCRouter({
         year: z.number(),
         credit: z.number().min(0),
         description: z.string().optional(),
-        assessments: z.any(), // Adjust according to the structure of assessments
+        assessments: z.array(assessmentDetailSchema)// Adjust according to the structure of assessments
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await insertCourse({ ctx, input });
+      const course = await insertCourse({ ctx, input });
+      return course ?? null
     }),
 
   getCourseById: publicProcedure
@@ -60,7 +79,6 @@ export const courseRouter = createTRPCRouter({
       const course = await ctx.db.query.courses.findFirst({
         where: (courses, { eq }) => eq(courses.id, input.courseId),
       });
-
       return course ?? null;
     }),
 
