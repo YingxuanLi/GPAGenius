@@ -3,18 +3,18 @@ import * as cheerio from "cheerio";
 
 export interface LegacyAssessmentDetails {
   task: string;
-  dueDate: string;
+  dueDate?: string;
   weight: string;
-  objectives: string;
+  objectives?: string;
 }
 
 export interface AssessmentDetail {
   title: string;
-  mode: string;
-  category: string;
+  mode?: string;
+  category?: string;
   weight: string;
-  dueDate: string;
-  taskDescription: string;
+  dueDate?: string;
+  taskDescription?: string;
   learningOutcomes?: string;
   hurdleRequirements?: string;
   additionalDetails?: Record<string, string>;
@@ -229,7 +229,7 @@ const getCourseAndAssessments = async (
 };
 
 const getCourseInfo = async (sectionCode: String) => {
-  console.log('executed at ' + new Date())
+  console.log("executed at " + new Date());
   const url = `https://course-profiles.uq.edu.au/course-profiles/${sectionCode}#course-overview`;
   const headers = {
     "User-Agent": "My User Agent 1.0",
@@ -263,6 +263,5 @@ const getCourseInfo = async (sectionCode: String) => {
   };
   return info;
 };
-
 
 export { CourseNotFoundError, WrongSemesterError, getCourseAndAssessments };
