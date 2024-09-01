@@ -20,7 +20,7 @@ import { type AdapterAccount } from "next-auth/adapters";
  *
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
-export const createTable = pgTableCreator((name) => `gpa-genius_${name}`);
+export const createTable = pgTableCreator((name) => `${name}`);
 
 export const universities = createTable("university", {
   id: uuid("id").primaryKey().defaultRandom(),

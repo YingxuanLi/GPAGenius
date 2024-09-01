@@ -8,5 +8,5 @@ export default {
   dbCredentials: {
     url: env.DATABASE_URL,
   },
-  tablesFilter: ["gpa-genius_*"],
+  tablesFilter: ["*"],
 } satisfies Config;
