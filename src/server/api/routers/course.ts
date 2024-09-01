@@ -12,8 +12,8 @@ export const legacyAssessmentDetailsSchema = z.object({
   task: z.string(),
   dueDate: z.string().optional(),
   weight: z.string(),
-  objectives: z.string().optional()
-})
+  objectives: z.string().optional(),
+});
 
 export const assessmentDetailSchema = z.object({
   title: z.string(),
@@ -25,8 +25,8 @@ export const assessmentDetailSchema = z.object({
   learningOutcomes: z.string().optional(),
   hurdleRequirements: z.string().optional(),
   additionalDetails: z.record(z.string()).optional(),
-  isHurdled: z.boolean().optional()
-})
+  isHurdled: z.boolean().optional(),
+});
 
 const insertCourse = async ({
   ctx,
@@ -65,12 +65,12 @@ export const courseRouter = createTRPCRouter({
         year: z.number(),
         credit: z.number().min(0),
         description: z.string().optional(),
-        assessments: z.array(assessmentDetailSchema)// Adjust according to the structure of assessments
+        assessments: z.array(assessmentDetailSchema), // Adjust according to the structure of assessments
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const course = await insertCourse({ ctx, input });
-      return course ?? null
+      return course ?? null;
     }),
 
   getCourseById: publicProcedure
@@ -85,17 +85,26 @@ export const courseRouter = createTRPCRouter({
   getCourseByCodeAndSemester: publicProcedure
     .input(
       z.object({
-        universityId: z.string().uuid(),
+        universityId: z.string().uuid().optional(),
         courseCode: z.string(),
         year: z.number(),
         semester: z.string(),
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (!ctx.session?.user?.universityId && !input.universityId) {
+        throw new Error("universityId is required");
+      }
+
+      const universityId =
+        ctx?.session?.user.universityId ||
+        (ctx?.headers.get("universityId") as string) ||
+        input.universityId!;
+        
       let course = await ctx.db.query.courses.findFirst({
         where: (courses, { eq, and }) =>
           and(
-            eq(courses.universityId, input.universityId),
+            eq(courses.universityId, universityId),
             eq(courses.courseCode, input.courseCode),
             eq(courses.year, input.year),
             eq(courses.semester, input.semester),

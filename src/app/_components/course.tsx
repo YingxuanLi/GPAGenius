@@ -24,7 +24,7 @@ export function Course() {
   return (
     <>
       <h1 className="w-full max-w-xs">Course Info</h1>
-      <Card>
+      <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>
             {course?.courseCode} {course?.courseName}
