@@ -146,7 +146,9 @@ export const courses = createTable("course", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
   courseCode: varchar("course_code", { length: 64 }).notNull(),
   courseName: varchar("course_name", { length: 255 }).notNull(),
-  universityId: uuid('university_id').references(() => universities.id).notNull(),
+  universityId: uuid("university_id")
+    .references(() => universities.id)
+    .notNull(),
   year: integer("year").notNull(),
   semester: varchar("semester", { length: 255 }).notNull(),
   credit: real("credit").notNull(),
@@ -193,11 +195,12 @@ export const enrollments = createTable("enrollment", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
+export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
   course: one(courses, {
     fields: [enrollments.courseId],
     references: [courses.id],
   }),
+  assessments: many(userAssessments),
   user: one(users, { fields: [enrollments.userId], references: [users.id] }),
 }));
 
@@ -207,12 +210,9 @@ export const userAssessments = createTable("user_assessment", {
   weight: real("weight").notNull(),
   mark: real("mark"),
   maxMark: real("max_mark"),
-  userId: varchar("user_id")
+  enrollmentId: uuid("enrollment_id")
     .notNull()
-    .references(() => users.id),
-  courseId: uuid("course_id")
-    .notNull()
-    .references(() => courses.id),
+    .references(() => enrollments.id),
   createdAt: timestamp("created_at", { withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
@@ -225,13 +225,9 @@ export const userAssessments = createTable("user_assessment", {
 export const userAssessmentsRelations = relations(
   userAssessments,
   ({ one }) => ({
-    user: one(users, {
-      fields: [userAssessments.userId],
-      references: [users.id],
-    }),
-    course: one(courses, {
-      fields: [userAssessments.courseId],
-      references: [courses.id],
+    enrollment: one(enrollments, {
+      fields: [userAssessments.enrollmentId],
+      references: [enrollments.id],
     }),
   }),
 );
