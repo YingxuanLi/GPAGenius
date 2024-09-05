@@ -23,6 +23,9 @@ export function Course() {
   const [semester, setSemester] = useState(defaultSemester);
   const formattedCourseCode = courseCode.toUpperCase(); // upper case course code
 
+ //this is for button click event
+  const [fetchTrigger, setFetchTrigger] = useState(false);
+
   const { data: course } = api.course.getCourseByCodeAndSemester.useQuery(
     {
       courseCode: formattedCourseCode,
@@ -30,7 +33,7 @@ export function Course() {
       semester: semester,
     },
     {
-      enabled: !!courseCode && !!year && !!semester,
+      enabled: fetchTrigger, 
     }
   );
 
@@ -48,19 +51,32 @@ export function Course() {
     { value: "7", label: "Above 85%" },
   ];
 
-
   const [targetScore, setTargetScore] = useState("4"); // Default to "50-65%"
-
   const [scores, setScores] = useState(Array(assessments.length).fill(0)); // Initialize score array
-
   const [currentGradeLevel, setCurrentGradeLevel] = useState("0");
   const [totalScore, setTotalScore] = useState(0);
 
   const handleScoreChange = (e, index) => {
+    const input = e.target.value;
+    let score = 0;
+  
+    if (input.includes("/")) {
+      const [numerator, denominator] = input.split("/").map(Number);
+      if (denominator && denominator > 0) {
+        score = (numerator / denominator) * 100; 
+      }
+    } else if (input.includes("%")) {
+      score = parseFloat(input.replace("%", "")); 
+    } else {
+      score = parseFloat(input);
+    }
+    if (isNaN(score)) score = 0;
+    score = Math.min(Math.max(score, 0), 100);
     const newScores = [...scores];
-    newScores[index] = parseFloat(e.target.value) || 0; // Handle empty input
+    newScores[index] = score;
     setScores(newScores);
   };
+  
 
   useEffect(() => {
     const newTotalScore = assessments.reduce((total, assessment, index) => {
@@ -150,11 +166,7 @@ export function Course() {
           ))}
         </select>
         
-        <Button
-          onClick={() => {
-            // This button triggers the query to fetch course details
-          }}
-        >
+        <Button onClick={() => setFetchTrigger(true)}>
           Fetch Course Details
         </Button>
       </div>
@@ -174,11 +186,9 @@ export function Course() {
                 <li key={index}>
                   {assessment.title}: {assessment.weight}
                   <input
-                    type="number"
-                    placeholder="Input your score"
-                    min="0"
-                    max="100"
-                    onChange={(e) => handleScoreChange(e, index)}
+                    type="text" 
+                    placeholder="80,80% or 8/10"
+                    onChange={(e) => handleScoreChange(e, index)} 
                     className="input"
                   />
                 </li>
