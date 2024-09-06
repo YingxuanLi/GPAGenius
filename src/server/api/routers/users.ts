@@ -1,11 +1,12 @@
-import { and, eq, isNull, inArray } from "drizzle-orm";
+import { and, eq, isNull, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { userAssessments, enrollments, courses } from "~/server/db/schema";
+import { userAssessments, enrollments } from "~/server/db/schema";
 import { Context } from "~/trpc/server";
+import { validateAssessmentsWeight } from "~/server/utils/validateAssessmentsWeight";
 
 // Shared input schema for fields common to both create and update
-const assessmentFieldsSchema = z.object({
+export const assessmentFieldsSchema = z.object({
   enrollmentId: z.string().uuid(),
   assignmentName: z.string(),
   weight: z.number(),
@@ -13,10 +14,8 @@ const assessmentFieldsSchema = z.object({
   maxMark: z.number().optional(),
 });
 
-// Create a full input schema for creating a new assessment
 const createAssessmentInputSchema = assessmentFieldsSchema;
 
-// Create a partial input schema for updating an existing assessment
 const updateAssessmentInputSchema = assessmentFieldsSchema
   .extend({
     id: z.string().uuid(),
@@ -46,9 +45,6 @@ const getAssessmentsByEnrollment = async (
   ctx: Context,
   enrollmentId: string,
 ) => {
-  console.log("Get user assessments by enrollment");
-
-  // Query to find user assessments by enrollmentId
   const userAssessments = await ctx.db.query.userAssessments.findMany({
     where: (userAssessment, { eq }) =>
       and(
@@ -87,14 +83,13 @@ const deleteAssessments = async (ctx: Context, assessmentIds: string[]) => {
       `Assessments [${missingIdsForDeletion}] not found or they have already been deleted`,
     );
   }
-  // Update the `deletedAt` field for the assessments
+
   const deletedAssessments = await ctx.db
     .update(userAssessments)
-    .set({ deletedAt: new Date() }) // Set the current timestamp
+    .set({ deletedAt: new Date() })
     .where(inArray(userAssessments.id, assessmentIdsToArchive))
     .returning();
   return deletedAssessments;
-  //console.log(`Assessments for enrollment ${enrollmentId} have been marked as deleted.`);
 };
 
 export const userRouter = createTRPCRouter({
@@ -151,21 +146,43 @@ export const userRouter = createTRPCRouter({
   updateUserAssessment: protectedProcedure
     .input(updateAssessmentInputSchema)
     .mutation(async ({ ctx, input }) => {
-      // TODO: validate after update the combine weight is <= 1
       if (!input.id) {
         throw Error("assessment id required for update");
       }
-      const userId = ctx.session.user.id; // Ensure that the user is authenticated
-      // Update the user assessment in the database
+      if (input.weight) {
+        const enrollmentId = (
+          await ctx.db.query.userAssessments.findFirst({
+            where: eq(userAssessments.id, input.id),
+            columns: { enrollmentId: true },
+          })
+        )?.enrollmentId!;
+        // get other assessments under same enrollments except self
+        const existingAssessmentWeights = (
+          await ctx.db
+            .select({ weight: userAssessments.weight })
+            .from(userAssessments)
+            .where(
+              and(
+                eq(userAssessments.enrollmentId, enrollmentId),
+                ne(userAssessments.id, input.id),
+              ),
+            )
+        ).map((a) => a.weight);
+
+        const isValidWeightInput = validateAssessmentsWeight(
+          existingAssessmentWeights,
+          [input.weight],
+        );
+        if (!isValidWeightInput) {
+          throw Error(`Total weight after update will be greater than 100%.`);
+        }
+      }
       const updatedUserAssessment = await ctx.db
         .update(userAssessments)
         .set({
-          ...input, // Use the helper function
+          ...input,
         })
-        .where(
-          eq(userAssessments.enrollmentId, userId) &&
-            eq(userAssessments.id, input.id),
-        )
+        .where(eq(userAssessments.id, input.id))
         .returning();
 
       return updatedUserAssessment ?? null;
@@ -178,7 +195,7 @@ export const userRouter = createTRPCRouter({
       const existingEnrollment = await ctx.db.query.enrollments.findFirst({
         where: and(
           eq(enrollments.id, enrollmentId),
-          isNull(enrollments.deletedAt), // Check that `deletedAt` is null
+          isNull(enrollments.deletedAt),
         ),
       });
       if (!existingEnrollment) {
