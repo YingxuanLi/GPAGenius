@@ -105,6 +105,9 @@ export const userRouter = createTRPCRouter({
       const userEnrollments = ctx.db.query.enrollments.findMany({
         where: (enrollments, { eq }) =>
           and(eq(enrollments.userId, userId), isNull(enrollments.deletedAt)),
+        with: {
+          assessments: true,
+        },
       });
       return userEnrollments ?? null;
     }),
@@ -126,14 +129,21 @@ export const userRouter = createTRPCRouter({
         .returning();
       return userEnrollments ?? null;
     }),
-  createUserAssessment: protectedProcedure
-    .input(createAssessmentInputSchema)
+  createUserAssessments: protectedProcedure
+    .input(z.array(createAssessmentInputSchema))
     .mutation(async ({ ctx, input }) => {
       // TODO: add validation to check weights combine should be no more than 1
-      const assessmentData = prepareAssessmentData(input);
+      let assessmentsToBeInserted: z.infer<
+        typeof createAssessmentInputSchema
+      >[] = [];
+      input.forEach((assessment) => {
+        const data = prepareAssessmentData(assessment);
+        assessmentsToBeInserted.push(data);
+      });
+
       const userAssessment = ctx.db
         .insert(userAssessments)
-        .values(assessmentData)
+        .values(assessmentsToBeInserted)
         .returning();
 
       return userAssessment ?? null;
@@ -183,6 +193,9 @@ export const userRouter = createTRPCRouter({
       const deletedAssessments = await deleteAssessments(
         ctx,
         assessmentsIdsToBeDeleted || [],
+      );
+      console.debug(
+        `Assessments ${deletedAssessments} associated with enrollmentId ${input.enrollmentId} have been deleted`,
       );
       const deletedEnrollment = await ctx.db
         .update(enrollments)
