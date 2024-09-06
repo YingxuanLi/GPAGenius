@@ -5,8 +5,12 @@ import { renderTrpcPanel } from "@metamorph/trpc-panel";
 import { appRouter } from "~/server/api/root"; // Adjust the path as needed
 
 const handler = async (_: NextRequest) => {
+  const baseUrl =
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:3001/api/trpc"
+      : `https://${process.env.VERCEL_URL}/api/trpc`;
   const panelHtml = renderTrpcPanel(appRouter, {
-    url: "http://localhost:3001/api/trpc", // Ensure this is your tRPC endpoint
+    url: baseUrl, // Ensure this is your tRPC endpoint
     transformer: "superjson", // Ensure this matches your app's transformer
   });
 
