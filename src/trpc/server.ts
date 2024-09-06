@@ -28,3 +28,5 @@ export const { trpc: api, HydrateClient } = createHydrationHelpers<AppRouter>(
   caller,
   getQueryClient
 );
+
+export type Context = Awaited<ReturnType<typeof createContext>>;
