@@ -4,6 +4,7 @@ import { LatestPost } from "~/app/_components/post";
 import { getServerAuthSession } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
 import { Button } from "~/components/ui/button";
+import GradeCalculator from "./gradeCalculator/page";
 
 export default async function Home() {
   const hello = await api.post.hello({ text: "from tRPC" });
@@ -18,8 +19,9 @@ export default async function Home() {
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
             Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
           </h1>
-          //TODO: get rid of this in the future 
+          //TODO: get rid of this in the future
           <Button>Click MEEEEEEE</Button>
+          <GradeCalculator />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
             <Link
               className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
@@ -59,9 +61,20 @@ export default async function Home() {
               >
                 {session ? "Sign out" : "Sign in"}
               </Link>
+              <Link
+                href={"/api/panel"}
+                className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
+              >
+                {"Dev Portal"}
+              </Link>
+              <Link
+                href={"/gradeCalculator"}
+                className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
+              >
+                {"Grade Calculator"}
+              </Link>
             </div>
           </div>
-
           {session?.user && <LatestPost />}
         </div>
       </main>
