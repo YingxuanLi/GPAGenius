@@ -56,7 +56,8 @@ export function Course() {
   const [currentGradeLevel, setCurrentGradeLevel] = useState("0");
   const [totalScore, setTotalScore] = useState(0);
 
-  const handleScoreChange = (e, index) => {
+  //TODO: fix type
+  const handleScoreChange = (e: any, index: any) => {
     const input = e.target.value;
     let score = 0;
   
