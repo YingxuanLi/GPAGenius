@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
 import { useDebounce } from "use-debounce";
-import Loading from "./ui/loading";
 import { Skeleton } from "./ui/skeleton";
 
 type Course = {
