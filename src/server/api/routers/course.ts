@@ -1,3 +1,4 @@
+import { and } from "drizzle-orm";
 import { z } from "zod";
 import {
   createTRPCRouter,
@@ -65,7 +66,7 @@ export const courseRouter = createTRPCRouter({
         year: z.number(),
         credit: z.number().min(0),
         description: z.string().optional(),
-        assessments: z.array(assessmentDetailSchema), // Adjust according to the structure of assessments
+        assessments: z.array(assessmentDetailSchema),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -73,6 +74,29 @@ export const courseRouter = createTRPCRouter({
       return course ?? null;
     }),
 
+  getAllCoursesByUniversity: publicProcedure
+    .input(z.object({ universityId: z.string().uuid().optional() }))
+    .query(async ({ ctx, input }) => {
+      const universityId = ctx.session?.user.universityId || input.universityId;
+      if (!universityId) {
+        throw Error("UniversityId is required");
+      }
+      const courses = await ctx.db.query.courses.findMany({
+        columns: {
+          id: true,
+          courseCode: true,
+          courseName: true,
+          description: true,
+          credit: true,
+        },
+        where: (course, { eq }) =>
+          and(
+            eq(course.createdBy, "system"),
+            eq(course.universityId, universityId),
+          ),
+      });
+      return courses ?? null;
+    }),
   getCourseById: publicProcedure
     .input(z.object({ courseId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -100,7 +124,7 @@ export const courseRouter = createTRPCRouter({
         ctx?.session?.user.universityId ||
         (ctx?.headers.get("universityId") as string) ||
         input.universityId!;
-        
+
       let course = await ctx.db.query.courses.findFirst({
         where: (courses, { eq, and }) =>
           and(
