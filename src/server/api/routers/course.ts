@@ -1,4 +1,4 @@
-import { and } from "drizzle-orm";
+import { and, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   createTRPCRouter,
@@ -105,7 +105,6 @@ export const courseRouter = createTRPCRouter({
       });
       return course ?? null;
     }),
-
   getCourseByCodeAndSemester: publicProcedure
     .input(
       z.object({
@@ -142,8 +141,7 @@ export const courseRouter = createTRPCRouter({
             input.year.toString(),
           );
         const formattedInput = {
-          //TODO: refactor this to get uni id
-          universityId: "ae376fd2-a7c7-4f08-a480-5f6d99873c95",
+          universityId,
           courseCode: courseCode ? courseCode : input.courseCode,
           courseName,
           credit: Number(units),
@@ -156,5 +154,43 @@ export const courseRouter = createTRPCRouter({
         course = await insertCourse({ ctx, input: formattedInput });
       }
       return course ?? null;
+    }),
+  autocomplete: publicProcedure
+    .input(
+      z.object({
+        searchTerm: z.string(),
+        universityId: z.string().uuid().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.session?.user?.universityId && !input.universityId) {
+        throw new Error("universityId is required");
+      }
+
+      const universityId =
+        ctx?.session?.user.universityId ||
+        (ctx?.headers.get("universityId") as string) ||
+        input.universityId!;
+
+      if (!input.searchTerm) {
+        throw new Error("searchTerm is required for autocomplete");
+      }
+
+      const match = await ctx.db.execute(
+        sql.raw(
+          `SELECT id, course_name, course_code FROM course 
+           WHERE university_id = '${universityId}'
+           and fts @@ to_tsquery('${input.searchTerm}:*');`,
+        ),
+      );
+      const matchedCourses = match.map((c) => {
+        return {
+          id: c.id as string,
+          courseCode: c.course_code as string,
+          courseName: c.course_name as string,
+        };
+      });
+
+      return matchedCourses ?? [];
     }),
 });

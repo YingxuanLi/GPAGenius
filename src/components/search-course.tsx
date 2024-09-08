@@ -2,6 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { Input } from "~/components/ui/input";
+import { api } from "~/trpc/react";
+import { useDebounce } from "use-debounce";
+import Loading from "./ui/loading";
+import { Skeleton } from "./ui/skeleton";
 
 type Course = {
   id: number;
@@ -12,87 +16,29 @@ type Course = {
 
 export function SearchCourse() {
   // Initialize the courses array with type Course[]
-  const courses: Course[] = [
-    {
-      id: 1,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Introduction to Web Development",
-      description:
-        "Learn the fundamentals of building websites and web applications.",
-    },
-    {
-      id: 2,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Data Structures and Algorithms",
-      description:
-        "Dive into the core concepts of computer science and problem-solving.",
-    },
-    {
-      id: 3,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Machine Learning for Beginners",
-      description:
-        "Explore the world of artificial intelligence and build your first ML models.",
-    },
-    {
-      id: 4,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Introduction to Mobile App Development",
-      description:
-        "Learn to build cross-platform mobile apps using modern frameworks.",
-    },
-    {
-      id: 5,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Mastering React.js",
-      description:
-        "Become a pro at building dynamic user interfaces with React.",
-    },
-    {
-      id: 6,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Database Design and Management",
-      description: "Understand the principles of database systems and SQL.",
-    },
-    {
-      id: 7,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Cybersecurity Fundamentals",
-      description:
-        "Explore the world of information security and protect your digital assets.",
-    },
-    {
-      id: 8,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Game Development with Unity",
-      description:
-        "Learn to create 2D and 3D games using the powerful Unity engine.",
-    },
-    {
-      id: 9,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Introduction to Python Programming",
-      description:
-        "Master the versatile Python language and build your first applications.",
-    },
-    {
-      id: 10,
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Full-Stack Web Development with Node.js",
-      description:
-        "Learn to build end-to-end web applications using the Node.js ecosystem.",
-    },
-  ];
 
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 800);
+  const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
-  const filteredCourses = useMemo(() => {
-    return courses.filter((course) =>
-      course.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm, courses]);
+  // const filteredCourses = useMemo(() => {
+  //   return courses.filter((course) =>
+  //     course.title.toLowerCase().includes(searchTerm.toLowerCase())
+  //   );
+  // }, [searchTerm, courses]);
+
+  const {
+    data: filteredCourses,
+    isLoading,
+    error,
+  } = api.course.autocomplete.useQuery(
+    { searchTerm: debouncedSearchTerm },
+    { enabled: !!debouncedSearchTerm },
+  );
+
+  type ArrayElement<T> = T extends (infer U)[] ? U : null;
+  type Course = ArrayElement<typeof filteredCourses>;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -100,7 +46,8 @@ export function SearchCourse() {
   };
 
   const handleCourseSelect = (course: Course) => {
-    setSelectedCourse(course);
+    setSelectedCourse(course?.id || "");
+    console.log(selectedCourse);
     setIsDropdownOpen(false);
   };
 
@@ -118,35 +65,37 @@ export function SearchCourse() {
       </div>
       {isDropdownOpen && (
         <div className="absolute z-10 mt-2 max-h-[300px] w-full overflow-y-auto rounded-md bg-background shadow-lg ring-1 ring-black/5">
-          {filteredCourses.length > 0 ? (
+          {!!filteredCourses && filteredCourses?.length > 0 ? (
             <ul className="py-1">
               {filteredCourses.map((course) => (
                 <li
                   key={course.id}
                   className={`flex items-center gap-3 px-4 py-2 hover:bg-muted ${
-                    selectedCourse?.id === course.id ? "bg-muted" : ""
+                    selectedCourse === course.id ? "bg-muted" : ""
                   }`}
                   onClick={() => handleCourseSelect(course)}
                 >
-                  <img
-                    src={course.image}
-                    alt={course.title}
-                    width={40}
-                    height={40}
-                    className="rounded-md"
-                    style={{ aspectRatio: "40/40", objectFit: "cover" }}
-                  />
                   <div>
-                    <h4 className="font-medium">{course.title}</h4>
-                    <p className="text-sm text-muted-foreground">
+                    <h4 className="font-medium">
+                      {course.courseCode} - {course.courseName}
+                    </h4>
+                    {/* <p className="text-sm text-muted-foreground">
                       {course.description}
-                    </p>
+                    </p> */}
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
             <div className="px-4 py-2 text-muted-foreground">
+              {isLoading && (
+                <div className="px-4 py-2 text-muted-foreground">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                  </div>
+                </div>
+              )}
               No courses found.
             </div>
           )}

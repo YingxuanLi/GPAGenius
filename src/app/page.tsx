@@ -5,6 +5,7 @@ import { getServerAuthSession } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
 import { Button } from "~/components/ui/button";
 import GradeCalculator from "./gradeCalculator/page";
+import { SearchCourse } from "~/components/search-course";
 
 export default async function Home() {
   const hello = await api.post.hello({ text: "from tRPC" });
@@ -21,6 +22,7 @@ export default async function Home() {
           </h1>
           //TODO: get rid of this in the future
           <Button>Click MEEEEEEE</Button>
+          <SearchCourse />
           <GradeCalculator />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
             <Link
