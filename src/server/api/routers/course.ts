@@ -73,6 +73,40 @@ export const courseRouter = createTRPCRouter({
       const course = await insertCourse({ ctx, input });
       return course ?? null;
     }),
+  insertParsedCourse: publicProcedure
+    .input(
+      z.object({
+        universityId: z.string().uuid().optional(),
+        courseCode: z.string(),
+        year: z.number(),
+        semester: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const universityId = ctx.session?.user.universityId || input.universityId;
+      if (!universityId) {
+        throw Error("University ID is required!");
+      }
+      const { courseName, courseCode, units, assessments } =
+        await getCourseAndAssessments(
+          input.courseCode,
+          input.semester,
+          input.year.toString(),
+        );
+      const formattedInput = {
+        universityId,
+        courseCode: courseCode ? courseCode : input.courseCode,
+        courseName,
+        credit: Number(units),
+        assessments,
+        year: input.year,
+        semester: input.semester,
+        createdBy: "system",
+        updatedBy: "system",
+      };
+      const course = await insertCourse({ ctx, input: formattedInput });
+      return course ?? null;
+    }),
 
   getAllCoursesByUniversity: publicProcedure
     .input(z.object({ universityId: z.string().uuid().optional() }))
@@ -133,26 +167,6 @@ export const courseRouter = createTRPCRouter({
             eq(courses.semester, input.semester),
           ),
       });
-      if (!course) {
-        const { courseName, courseCode, units, assessments } =
-          await getCourseAndAssessments(
-            input.courseCode,
-            input.semester,
-            input.year.toString(),
-          );
-        const formattedInput = {
-          universityId,
-          courseCode: courseCode ? courseCode : input.courseCode,
-          courseName,
-          credit: Number(units),
-          assessments,
-          year: input.year,
-          semester: input.semester,
-          createdBy: "system",
-          updatedBy: "system",
-        };
-        course = await insertCourse({ ctx, input: formattedInput });
-      }
       return course ?? null;
     }),
   autocomplete: publicProcedure

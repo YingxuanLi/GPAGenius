@@ -5,36 +5,39 @@ import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
 import { useDebounce } from "use-debounce";
 import { Skeleton } from "./ui/skeleton";
-
-type Course = {
-  id: number;
-  image: string;
-  title: string;
-  description: string;
-};
+import { Button } from "./ui/button";
 
 export function SearchCourse() {
-  // Initialize the courses array with type Course[]
 
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [debouncedSearchTerm] = useDebounce(searchTerm, 800);
   const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
-  // const filteredCourses = useMemo(() => {
-  //   return courses.filter((course) =>
-  //     course.title.toLowerCase().includes(searchTerm.toLowerCase())
-  //   );
-  // }, [searchTerm, courses]);
-
   const {
     data: filteredCourses,
     isLoading,
-    error,
+    error: searchCourseError,
+    refetch: refetchCourses,
   } = api.course.autocomplete.useQuery(
     { searchTerm: debouncedSearchTerm },
     { enabled: !!debouncedSearchTerm },
   );
+
+  const createEnrollment = api.user.createUserEnrollment.useMutation({
+    onSuccess: async (course) => {
+      console.info(
+        `successfully enrolled into course::${JSON.stringify(course)}`,
+      );
+      setSearchTerm("");
+    },
+  });
+
+  const createParsedCourse = api.course.insertParsedCourse.useMutation({
+    onSuccess: async () => {
+      refetchCourses();
+    },
+  });
 
   type ArrayElement<T> = T extends (infer U)[] ? U : null;
   type Course = ArrayElement<typeof filteredCourses>;
@@ -45,9 +48,11 @@ export function SearchCourse() {
   };
 
   const handleCourseSelect = (course: Course) => {
+    if (!course) return;
     setSelectedCourse(course?.id || "");
     console.log(selectedCourse);
     setIsDropdownOpen(false);
+    createEnrollment.mutate({ courseId: course.id });
   };
 
   return (
@@ -96,6 +101,17 @@ export function SearchCourse() {
                 </div>
               )}
               No courses found.
+              <Button
+                onClick={() => {
+                  createParsedCourse.mutate({
+                    courseCode: debouncedSearchTerm,
+                    year: 2024,
+                    semester: "2",
+                  });
+                }}
+              >
+                {`Try to parse course from UQ`}
+              </Button>
             </div>
           )}
         </div>

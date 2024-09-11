@@ -111,7 +111,7 @@ export const userRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return await getAssessmentsByEnrollment(ctx, input.enrollmentId);
     }),
-  createUserEnrollments: protectedProcedure
+  createUserEnrollment: protectedProcedure
     .input(z.object({ courseId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
