@@ -103,6 +103,7 @@ export function SearchCourse() {
               No courses found.
               <Button
                 onClick={() => {
+                  //TODO: Remove hardcoded value here at some point 
                   createParsedCourse.mutate({
                     courseCode: debouncedSearchTerm,
                     year: 2024,
