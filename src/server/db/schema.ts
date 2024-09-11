@@ -11,6 +11,7 @@ import {
   timestamp,
   uuid,
   varchar,
+  customType,
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
@@ -20,6 +21,13 @@ import { type AdapterAccount } from "next-auth/adapters";
  *
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
+
+const tsVector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
+
 export const createTable = pgTableCreator((name) => `${name}`);
 
 export const universities = createTable("university", {
@@ -163,6 +171,7 @@ export const courses = createTable("course", {
     () => new Date(),
   ),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  fts: tsVector("fts"),
 });
 
 export const courseRelations = relations(courses, ({ one, many }) => ({

@@ -22,6 +22,7 @@ import {
   CardFooter,
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { SearchCourse } from "./search-course";
 
 export function Enrollments() {
   // replace these dummy data with actual user course enrollments and assessments
@@ -88,6 +89,7 @@ export function Enrollments() {
   return (
     <div className="container mx-auto py-8">
       <h1 className="mb-6 text-3xl font-bold">My Course Enrollments</h1>
+      <SearchCourse />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {courseData.map((course) => (
           <Card key={course.id} className="h-full">
