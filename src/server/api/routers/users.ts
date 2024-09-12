@@ -129,7 +129,6 @@ export const userRouter = createTRPCRouter({
       if (!userEnrollment) {
         throw new Error("Failed to enroll!");
       }
-      console.log(userEnrollment);
       // get course assessments
       const courseAssessments = (
         await ctx.db
@@ -155,8 +154,6 @@ export const userRouter = createTRPCRouter({
           .insert(userAssessments)
           .values(assessmentInput)
           .returning();
-        console.log(assessments);
-        // assessmentsToBeInserted.push(data);
       });
       console.log(courseAssessments);
       return userEnrollment ?? null;
