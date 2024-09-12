@@ -1,7 +1,7 @@
 import { and, eq, isNull, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { userAssessments, enrollments } from "~/server/db/schema";
+import { userAssessments, enrollments, courses } from "~/server/db/schema";
 import { Context } from "~/trpc/server";
 import { validateAssessmentsWeight } from "~/server/utils/validateAssessmentsWeight";
 
@@ -115,14 +115,50 @@ export const userRouter = createTRPCRouter({
     .input(z.object({ courseId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const userEnrollments = ctx.db
-        .insert(enrollments)
-        .values({
-          userId,
-          courseId: input.courseId,
-        })
-        .returning();
-      return userEnrollments ?? null;
+      const userEnrollment = (
+        await ctx.db
+          .insert(enrollments)
+          .values({
+            userId,
+            courseId: input.courseId,
+          })
+          .returning()
+      )[0];
+
+      if (!userEnrollment) {
+        throw new Error("Failed to enroll!");
+      }
+      console.log(userEnrollment);
+      // get course assessments
+      const courseAssessments = (
+        await ctx.db
+          .select({ assessments: courses.assessments })
+          .from(courses)
+          .where(eq(courses.id, input.courseId))
+      )[0]?.assessments as any;
+      // map them to user assessments
+      const parsePercentageToDecimal = (percentage: string) => {
+        const decimal = parseFloat(percentage.replace("%", "")) / 100;
+        return decimal;
+      };
+
+      courseAssessments.forEach(async (assessment: any) => {
+        const assessmentInput = {
+          enrollmentId: userEnrollment.id,
+          weight: parsePercentageToDecimal(assessment.weight),
+          assignmentName: assessment.title,
+          mark: 0,
+        };
+
+        const assessments = await ctx.db
+          .insert(userAssessments)
+          .values(assessmentInput)
+          .returning();
+        console.log(assessments);
+        // assessmentsToBeInserted.push(data);
+      });
+      console.log(courseAssessments);
+      return userEnrollment ?? null;
     }),
   createUserAssessments: protectedProcedure
     .input(z.array(createAssessmentInputSchema))
@@ -207,6 +243,7 @@ export const userRouter = createTRPCRouter({
       const assessmentsIdsToBeDeleted = (
         await getAssessmentsByEnrollment(ctx, input.enrollmentId)
       )?.map((a) => a.id);
+      if (!assessmentsIdsToBeDeleted) return;
       const deletedAssessments = await deleteAssessments(
         ctx,
         assessmentsIdsToBeDeleted || [],
