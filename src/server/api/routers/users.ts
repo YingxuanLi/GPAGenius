@@ -102,6 +102,7 @@ export const userRouter = createTRPCRouter({
           and(eq(enrollments.userId, userId), isNull(enrollments.deletedAt)),
         with: {
           assessments: true,
+          course: true,
         },
       });
       return userEnrollments ?? null;
