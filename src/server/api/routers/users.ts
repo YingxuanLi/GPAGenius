@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userAssessments, enrollments, courses } from "~/server/db/schema";
 import { Context } from "~/trpc/server";
 import { validateAssessmentsWeight } from "~/server/utils/validateAssessmentsWeight";
+import { sql } from "drizzle-orm";
 
 // Shared input schema for fields common to both create and update
 export const assessmentFieldsSchema = z.object({
@@ -269,4 +270,130 @@ export const userRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await deleteAssessments(ctx, input.assessmentIds);
     }),
+  // assessment ranking
+  getUserAssessmentRankingByCourse: protectedProcedure
+    .input(z.object({ assessmentId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // Query to calculate ranking of each user's assessments by courseId
+      // TODO: Maybe redesign the way to get assignment, course assignment comes from jsonb which we can't tell assignment by id, 
+      // thus we can only partition by assignment with course id
+      // TODO: alternatively, we can store normalised rank in db and use a procedure to calculate, 
+      // tho this will increase storage and insert cost
+      const result = await ctx.db
+        .select({
+          enrollmentId: enrollments.id,
+          assessmentId: userAssessments.id,
+          assignmentName: userAssessments.assignmentName,
+          courseId: courses.id,
+          mark: userAssessments.mark,
+          normalisedPercentRank: sql<number>`CASE 
+          WHEN (COUNT(*) OVER (PARTITION BY ${userAssessments.assignmentName}, ${courses.id}) - 1) = 0 THEN 1
+          ELSE (CAST((RANK() OVER (PARTITION BY ${userAssessments.assignmentName}, ${courses.id} ORDER BY ${userAssessments.mark}) - 1) AS FLOAT) /
+          (COUNT(*) OVER (PARTITION BY ${courses.id}, ${userAssessments.assignmentName}) - 1))
+        END`,
+        })
+        .from(userAssessments)
+        .innerJoin(
+          enrollments,
+          eq(userAssessments.enrollmentId, enrollments.id),
+        )
+        .innerJoin(courses, eq(enrollments.courseId, courses.id))
+        .where(isNull(userAssessments.deletedAt))
+        .orderBy(userAssessments.assignmentName);
+
+      // Filter to get the specific assessmentId
+      const assessment = result.find(
+        (row) => row.assessmentId === input.assessmentId,
+      );
+
+      // Return the filtered result
+      return {
+        assessmentId: assessment?.assessmentId,
+        percentRank: assessment?.normalisedPercentRank,
+      };
+    }),
+  //TODO: remove mock enrollments for dev purpose
+  // createMockEnrollments: protectedProcedure
+  //   .input(z.object({ courseId: z.string().uuid() }))
+  //   .mutation(async ({ ctx, input }) => {
+  //     const userIds = [
+  //       "a9be0421-ef99-4333-be32-1293097f80d8",
+  //       "9624d0d4-0d6d-4204-a571-8708c8ed9274",
+  //       "c506b451-397c-40e3-9bff-1c16acf73856",
+  //       "b640e903-9fe5-402d-bec9-cf26baa53aab",
+  //       "5af7a0f8-7251-4f88-a2b8-c278e5f6cb36",
+  //       "584416d3-cca7-4e00-8e77-55a21acc9f2b",
+  //       "2f3ead35-aac2-4e24-a1d5-9cbcba1ef356",
+  //       "4b8c3aa6-ef18-4587-af5b-6aeb9fd255e9",
+  //       "5722efcc-681a-4bde-98d6-88300e3827d2",
+  //       "a93e602a-a7a3-4ae1-8a7e-9e87f4b36f01",
+  //       "85d36a12-d3db-48d7-bda9-c63a65e4b9d2",
+  //       "47630cf6-c676-4636-b581-1a2265193dff",
+  //       "35cf45d4-cf38-4d77-8a63-650389989ac6",
+  //       "487a1cfa-f0d7-4aab-b102-f2da3c61c3f2",
+  //     ];
+  //     const userEnrollments = userIds.map(async (u) => {
+  //       const userEnrollment = (await ctx.db.insert(enrollments).values({
+  //         userId: u,
+  //         courseId: input.courseId,
+  //       }).returning())[0];
+  //       const courseAssessments = (
+  //         await ctx.db
+  //           .select({ assessments: courses.assessments })
+  //           .from(courses)
+  //           .where(eq(courses.id, input.courseId))
+  //       )[0]?.assessments as any;
+  //       // map them to user assessments
+  //       const parsePercentageToDecimal = (percentage: string) => {
+  //         const decimal = parseFloat(percentage.replace("%", "")) / 100;
+  //         return decimal;
+  //       };
+
+  //       courseAssessments.forEach(async (assessment: any) => {
+  //         const assessmentInput = {
+  //           enrollmentId: userEnrollment?.id,
+  //           weight: parsePercentageToDecimal(assessment.weight),
+  //           assignmentName: assessment.title,
+  //           mark: 0,
+  //         };
+
+  //         const assessments = await ctx.db
+  //           .insert(userAssessments)
+  //           .values(assessmentInput!)
+  //           .returning();
+  //       });
+  //     });
+
+  // if (!userEnrollment) {
+  //   throw new Error("Failed to enroll!");
+  // }
+  // get course assessments
+  // const courseAssessments = (
+  //   await ctx.db
+  //     .select({ assessments: courses.assessments })
+  //     .from(courses)
+  //     .where(eq(courses.id, input.courseId))
+  // )[0]?.assessments as any;
+  // // map them to user assessments
+  // const parsePercentageToDecimal = (percentage: string) => {
+  //   const decimal = parseFloat(percentage.replace("%", "")) / 100;
+  //   return decimal;
+  // };
+
+  // courseAssessments.forEach(async (assessment: any) => {
+  //   const assessmentInput = {
+  //     enrollmentId: userEnrollment.id,
+  //     weight: parsePercentageToDecimal(assessment.weight),
+  //     assignmentName: assessment.title,
+  //     mark: 0,
+  //   };
+
+  //   const assessments = await ctx.db
+  //     .insert(userAssessments)
+  //     .values(assessmentInput)
+  //     .returning();
+  // });
+  // console.log(courseAssessments);
+  // return userEnrollment ?? null;
+  // }),
 });
