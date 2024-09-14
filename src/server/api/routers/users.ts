@@ -275,41 +275,53 @@ export const userRouter = createTRPCRouter({
     .input(z.object({ assessmentId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       // Query to calculate ranking of each user's assessments by courseId
-      // TODO: Maybe redesign the way to get assignment, course assignment comes from jsonb which we can't tell assignment by id, 
+      // TODO: Maybe redesign the way to get assignment, course assignment comes from jsonb which we can't tell assignment by id,
       // thus we can only partition by assignment with course id
-      // TODO: alternatively, we can store normalised rank in db and use a procedure to calculate, 
+      // TODO: alternatively, we can store normalised rank in db and use a procedure to calculate,
       // tho this will increase storage and insert cost
-      const result = await ctx.db
-        .select({
-          enrollmentId: enrollments.id,
-          assessmentId: userAssessments.id,
-          assignmentName: userAssessments.assignmentName,
-          courseId: courses.id,
-          mark: userAssessments.mark,
-          normalisedPercentRank: sql<number>`CASE 
-          WHEN (COUNT(*) OVER (PARTITION BY ${userAssessments.assignmentName}, ${courses.id}) - 1) = 0 THEN 1
-          ELSE (CAST((RANK() OVER (PARTITION BY ${userAssessments.assignmentName}, ${courses.id} ORDER BY ${userAssessments.mark}) - 1) AS FLOAT) /
-          (COUNT(*) OVER (PARTITION BY ${courses.id}, ${userAssessments.assignmentName}) - 1))
-        END`,
-        })
-        .from(userAssessments)
-        .innerJoin(
-          enrollments,
-          eq(userAssessments.enrollmentId, enrollments.id),
-        )
-        .innerJoin(courses, eq(enrollments.courseId, courses.id))
-        .where(isNull(userAssessments.deletedAt))
-        .orderBy(userAssessments.assignmentName);
-
-      // Filter to get the specific assessmentId
-      const assessment = result.find(
-        (row) => row.assessmentId === input.assessmentId,
+      const assessmentWithCourse = await ctx.db.query.userAssessments.findFirst(
+        {
+          columns: {
+            id: true,
+            assignmentName: true,
+          },
+          with: {
+            enrollment: {
+              columns: {
+                courseId: true,
+              },
+            },
+          },
+          where: (userAssessments, { eq }) =>
+            eq(userAssessments.id, input.assessmentId),
+        },
       );
-
-      // Return the filtered result
+      if (!assessmentWithCourse || !assessmentWithCourse.id) {
+        throw Error("assessment with provided ID not found");
+      }
+      const result = (
+        await ctx.db.execute(
+          sql.raw(`
+          select rank
+            from (select *, percent_rank() over (order by mark) as rank
+      from (select enrollment_id,
+                   user_assessment.id as aid,
+                   assignment_name,
+                   course_id,
+                   mark
+            from user_assessment
+                     join enrollment on user_assessment.enrollment_id = enrollment.id
+                     join course on enrollment.course_id = course.id
+            where course_id = '${assessmentWithCourse?.enrollment.courseId}'
+              and assignment_name = '${assessmentWithCourse?.assignmentName}') as uaec) assessments_ranks
+        where assessments_ranks.aid = '${assessmentWithCourse?.id}';
+        `),
+        )
+      )[0];
+      console.log(assessmentWithCourse)
+      console.log(result)
       return {
-        assessmentId: assessment?.assessmentId,
-        percentRank: assessment?.normalisedPercentRank,
+        rank: (result?.rank as number) || -1,
       };
     }),
 });
