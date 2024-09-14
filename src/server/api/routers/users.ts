@@ -318,8 +318,6 @@ export const userRouter = createTRPCRouter({
         `),
         )
       )[0];
-      console.log(assessmentWithCourse)
-      console.log(result)
       return {
         rank: (result?.rank as number) || -1,
       };
