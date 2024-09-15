@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
 import { useDebounce } from "use-debounce";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
-import { useEnrollmentStore } from "~/app/stores/enrollment-store";
 
 export function SearchCourse() {
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -25,18 +24,19 @@ export function SearchCourse() {
     { searchTerm: debouncedSearchTerm },
     { enabled: !!debouncedSearchTerm },
   );
-  const { data: enrollmentsData } = api.user.getUserEnrollments.useQuery(
-    { userId: "" },
-    { enabled: shouldFetchEnrollments },
-  );
-  const { enrollments, setEnrollments, setScore, addEnrollment } =
-    useEnrollmentStore();
+  const { data: enrollmentsData, refetch: refetchEnrollments } =
+    api.user.getUserEnrollments.useQuery(
+      { userId: "" },
+      { enabled: shouldFetchEnrollments },
+    );
+
   const createEnrollment = api.user.createUserEnrollment.useMutation({
     onSuccess: async (course) => {
       console.info(
         `successfully enrolled into course::${JSON.stringify(course)}`,
       );
       setSearchTerm("");
+      refetchEnrollments();
     },
   });
 
@@ -54,18 +54,14 @@ export function SearchCourse() {
     setIsDropdownOpen(e.target.value.length > 0);
   };
 
-  const handleCourseSelect = async (course: Course) => {
+  const handleCourseSelect =  (course: Course) => {
     if (!course) return;
     setSelectedCourse(course?.id || "");
     setIsDropdownOpen(false);
-    const newEnrollment = await createEnrollment.mutateAsync({
+  createEnrollment.mutate({
       courseId: course.id,
     });
-    // We want to fetch enrollments again after new enrollment is created so that enrollments page
-    // so that subscribes to it can get the latest enrollment
-    !!newEnrollment && setShouldFetchEnrollments(true);
-    !!enrollmentsData && setEnrollments(enrollmentsData);
-  };
+  }
 
   return (
     <div className="relative w-full max-w-md">
