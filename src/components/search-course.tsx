@@ -6,13 +6,15 @@ import { api } from "~/trpc/react";
 import { useDebounce } from "use-debounce";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
+import { useEnrollmentStore } from "~/app/stores/enrollment-store";
 
 export function SearchCourse() {
-
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [debouncedSearchTerm] = useDebounce(searchTerm, 800);
   const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [shouldFetchEnrollments, setShouldFetchEnrollments] =
+    useState<boolean>(false);
 
   const {
     data: filteredCourses,
@@ -23,7 +25,12 @@ export function SearchCourse() {
     { searchTerm: debouncedSearchTerm },
     { enabled: !!debouncedSearchTerm },
   );
-
+  const { data: enrollmentsData } = api.user.getUserEnrollments.useQuery(
+    { userId: "" },
+    { enabled: shouldFetchEnrollments },
+  );
+  const { enrollments, setEnrollments, setScore, addEnrollment } =
+    useEnrollmentStore();
   const createEnrollment = api.user.createUserEnrollment.useMutation({
     onSuccess: async (course) => {
       console.info(
@@ -47,12 +54,17 @@ export function SearchCourse() {
     setIsDropdownOpen(e.target.value.length > 0);
   };
 
-  const handleCourseSelect = (course: Course) => {
+  const handleCourseSelect = async (course: Course) => {
     if (!course) return;
     setSelectedCourse(course?.id || "");
-    console.log(selectedCourse);
     setIsDropdownOpen(false);
-    createEnrollment.mutate({ courseId: course.id });
+    const newEnrollment = await createEnrollment.mutateAsync({
+      courseId: course.id,
+    });
+    // We want to fetch enrollments again after new enrollment is created so that enrollments page
+    // so that subscribes to it can get the latest enrollment
+    !!newEnrollment && setShouldFetchEnrollments(true);
+    !!enrollmentsData && setEnrollments(enrollmentsData);
   };
 
   return (
@@ -103,7 +115,7 @@ export function SearchCourse() {
               No courses found.
               <Button
                 onClick={() => {
-                  //TODO: Remove hardcoded value here at some point 
+                  //TODO: Remove hardcoded value here at some point
                   createParsedCourse.mutate({
                     courseCode: debouncedSearchTerm,
                     year: 2024,

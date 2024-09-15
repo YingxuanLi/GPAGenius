@@ -3,18 +3,22 @@ import type {  inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from "~/server/api/root";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
-type UserEnrollments = RouterOutput['user']['getUserEnrollments'];
+type UserEnrollment = RouterOutput['user']['getUserEnrollments'][0];
 
 interface StoreState {
-  enrollments: UserEnrollments;
-  setEnrollments: (UserEnrollments: UserEnrollments) => void;
+  enrollments: UserEnrollment[];
+  setEnrollments: (UserEnrollments: UserEnrollment[]) => void;
   setScore: (courseId: string, assessmentId: string, score: number) => void;
+  addEnrollment:(newEnrollment: UserEnrollment) => void;
 }
 
 export const useEnrollmentStore = create<StoreState>((set) => ({
   enrollments: [],
   // shouldRefetchEnrollment: Boolean,
-  setEnrollments: (data: UserEnrollments) => set({ enrollments: data }), 
+  setEnrollments: (data: UserEnrollment[]) => set({ enrollments: data }), 
+  addEnrollment: (newEnrollment: UserEnrollment) => set((state) => ({
+    enrollments: [...state.enrollments, newEnrollment],
+  })),
   // setShouldRefetchEnrollment: ((data: boolean) => set({shouldRefetchEnrollment: data})),
 //     set((state: any) => {
 //       console.log(state);
