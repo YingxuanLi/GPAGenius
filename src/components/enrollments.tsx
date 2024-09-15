@@ -17,8 +17,8 @@ import { useEnrollmentStore } from "~/app/stores/enrollment-store";
 export function Enrollments() {
   // const userId = "9f632171-cc4b-4210-9b72-d5466923023b";
   const [fetchTrigger, setFetchTrigger] = useState(false);
-  const { enrollments, setEnrollments, setScore, shouldRefetchEnrollment } =
-    useEnrollmentStore() as any;
+  const { enrollments, setEnrollments, setScore } =
+    useEnrollmentStore()
   const { data: enrollmentsData, isLoading } =
     api.user.getUserEnrollments.useQuery({ userId: "" });
 
