@@ -14,16 +14,44 @@ import { SearchCourse } from "./search-course";
 import { useEnrollmentStore } from "~/app/stores/enrollment-store";
 import { Button } from "./ui/button";
 import { CrossIcon } from "./icons/cross-icon";
+import { InfoIcon } from "./icons/info-icon";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "~/components/ui/dialog";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "~/server/api/root";
+
+type RouterOutput = inferRouterOutputs<AppRouter>;
+type Assessment =
+  RouterOutput["user"]["getUserEnrollments"][0]["assessments"][0];
 
 export function Enrollments() {
   // const userId = "9f632171-cc4b-4210-9b72-d5466923023b";
   const [fetchTrigger, setFetchTrigger] = useState(false);
+  const [showRankDialog, setShowRankDialog] = useState<boolean>(false);
+  const [currentAssessment, setCurrentAssessment] = useState<Assessment | null>(
+    null,
+  );
   const { enrollments, setEnrollments, setScore } = useEnrollmentStore();
   const {
     data: enrollmentsData,
     isLoading,
     refetch: refetchEnrollments,
   } = api.user.getUserEnrollments.useQuery({ userId: "" });
+
+  //TODO: FIX THIS
+  const { data: percentRank, refetch: refetchRank } =
+    api.user.getUserAssessmentRankingByCourse.useQuery(
+      {
+        assessmentId: currentAssessment?.id || "",
+      },
+      { enabled: !!currentAssessment },
+    );
 
   const updateAssessment = api.user.updateUserAssessment.useMutation({
     onSuccess: async (course) => {
@@ -37,12 +65,14 @@ export function Enrollments() {
       refetchEnrollments();
     },
   });
-  type ArrayElement<T> = T extends (infer U)[] ? U : null;
 
   useEffect(() => {
     if (enrollmentsData) {
       setEnrollments(enrollmentsData);
     }
+    // if (currentAssessment) {
+    //   refetchRank();
+    // }
   }, [enrollmentsData]);
 
   // Handle score input change
@@ -63,7 +93,16 @@ export function Enrollments() {
   const handleEnrollmentDelete = (enrollmentId: string) => {
     deleteEnrollment.mutate({ enrollmentId });
   };
-
+  const handleShowRankDialog = async (assessment: Assessment) => {
+    setCurrentAssessment(assessment);
+    setShowRankDialog(true);
+    console.info(assessment);
+    refetchRank();
+  };
+  const handleCloseRankDialog = () => {
+    setShowRankDialog(false);
+    setCurrentAssessment(null);
+  };
   const calculateTotalScore = (assessments: any[]) => {
     return assessments.reduce((total, assessment, index) => {
       return total + assessment.mark * parseFloat(assessment.weight);
@@ -75,41 +114,42 @@ export function Enrollments() {
       <h1 className="mb-6 text-3xl font-bold">My Course Enrollments</h1>
       <SearchCourse />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {enrollments?.map(
-          (enrollment: ArrayElement<typeof enrollmentsData>) => (
-            <Card key={enrollment?.id} className="h-full">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="truncate whitespace-normal text-xl sm:text-2xl md:text-3xl lg:text-2xl xl:text-3xl">
-                    {enrollment?.course.courseCode} -{" "}
-                    {enrollment?.course.courseName}
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEnrollmentDelete(enrollment?.id || '')}
+        {enrollments?.map((enrollment) => (
+          <Card key={enrollment?.id} className="h-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-l sm:text-l md:text-l lg:text-l xl:text-l truncate whitespace-normal">
+                  {enrollment?.course.courseCode} -{" "}
+                  {enrollment?.course.courseName}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEnrollmentDelete(enrollment?.id || "")}
+                >
+                  <CrossIcon className="h-4 w-4 hover:text-red-500" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {enrollment?.assessments.map((assessment) => (
+                  <div
+                    key={assessment.id}
+                    className="flex items-center justify-between"
                   >
-                    <CrossIcon className="h-4 w-4 hover:text-red-500" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {enrollment?.assessments.map((assessment) => (
-                    <div
-                      key={assessment.id}
-                      className="flex items-center justify-between"
-                    >
-                      <div>
-                        <div className="font-medium">
-                          {assessment.assignmentName}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Weight: {assessment.weight * 100}%
-                        </div>
+                    <div>
+                      <div className="font-medium">
+                        {assessment.assignmentName}
                       </div>
+                      <div className="text-sm text-muted-foreground">
+                        Weight: {assessment.weight * 100}%
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* TODO: better handle user input and api calls */}
                       <Input
-                        type="string"
+                        type="number"
                         min="0"
                         max="100"
                         value={assessment.mark || 0}
@@ -122,22 +162,63 @@ export function Enrollments() {
                         }
                         className="w-20"
                       />
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleShowRankDialog(assessment)}
+                      >
+                        <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">Overall Grade:</div>
-                  <div className="text-2xl font-bold">
-                    {calculateTotalScore(enrollment!.assessments).toFixed(2)}
                   </div>
+                ))}
+              </div>
+            </CardContent>
+            <CardFooter>
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Overall Grade:</div>
+                <div className="text-2xl font-bold">
+                  {calculateTotalScore(enrollment!.assessments).toFixed(2)}
                 </div>
-              </CardFooter>
-            </Card>
-          ),
-        )}
+              </div>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
+      {showRankDialog && (
+        <Dialog open={showRankDialog} onOpenChange={handleCloseRankDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Assessment Rank</DialogTitle>
+              <DialogDescription>
+                The rank of {currentAssessment?.assignmentName} within the
+                cohort who uses this app.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="px-4 py-6">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Rank:</div>
+                <div className="text-2xl font-bold">3rd</div>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="font-medium">Average Score:</div>
+                <div className="text-2xl font-bold">85%</div>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="font-medium">You beat:</div>
+                <div className="text-2xl font-bold">
+                  {!!percentRank && Number(percentRank.rank * 100).toFixed(2)}%
+                  of users
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleCloseRankDialog}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
