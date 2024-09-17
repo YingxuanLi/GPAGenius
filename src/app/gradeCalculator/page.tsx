@@ -9,7 +9,6 @@ const GradeCalculator = async () => {
   void api.user.getUserEnrollments.prefetch({ userId: session?.user.id });
   return (
     <HydrateClient>
-      <div>Your GPA calculation component goes here</div>
       <Enrollments />
       {/* <Course /> */}
     </HydrateClient>
