@@ -17,9 +17,7 @@ export default function TargetGradeSelect({
   selectedValue,
   onValueChange,
 }: TargetGradeSelectProps) {
-  //   const [selectedValue, setSelectedValue] = useState("1");
 
-  // Options with long labels and short labels for display
   const options = [
     {
       value: "0",
@@ -58,7 +56,6 @@ export default function TargetGradeSelect({
     },
   ];
 
-  // Function to get the short label of the selected value
   const getShortLabel = (value: string) => {
     return options.find((option) => option.value === value)?.shortLabel || "";
   };
