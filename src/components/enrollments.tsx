@@ -26,6 +26,7 @@ import {
 } from "~/components/ui/dialog";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "~/server/api/root";
+import { HurdleWarning } from "./hurdle-tooltip";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type Assessment =
@@ -153,11 +154,9 @@ export function Enrollments() {
                         </div>
                       </div>
                       {/* @ts-ignore */}
-                      {(enrollment.course.assessments.find(
+                      {enrollment.course.assessments.find(
                         (a: any) => a.title === assessment.assignmentName,
-                      ).isHurdled) && (
-                        <TriangleAlertIcon className="h-4 w-4 text-red-500" />
-                      )}
+                      ).isHurdled && <HurdleWarning />}
                     </div>
                     <div className="flex items-center gap-2">
                       {/* TODO: better handle user input and api calls */}
