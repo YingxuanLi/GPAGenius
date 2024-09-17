@@ -12,6 +12,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { SearchCourse } from "./search-course";
 import { useEnrollmentStore } from "~/app/stores/enrollment-store";
+
 import { Button } from "./ui/button";
 import { CrossIcon } from "./icons/cross-icon";
 import { InfoIcon } from "./icons/info-icon";
@@ -26,6 +27,17 @@ import {
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "~/server/api/root";
 import { HurdleWarning } from "./hurdle-tooltip";
+import { calculateRequiredMark } from "~/app/helpers/calculateRequiredMark";
+import {
+  Select,
+  SelectItem,
+  SelectTrigger,
+  SelectContent,
+  SelectValue,
+  SelectLabel,
+  SelectGroup,
+} from "./ui/select";
+import TargetGradeSelect from "./target-grade-select";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type Assessment =
@@ -36,6 +48,13 @@ export function Enrollments() {
   const [currentAssessment, setCurrentAssessment] = useState<Assessment | null>(
     null,
   );
+  const [targetGrades, setTargetGrades] = useState<
+    | {
+        enrollmentId: string;
+        targetGrade: string;
+      }[]
+    | null
+  >(null);
   const { enrollments, setEnrollments, setScore } = useEnrollmentStore();
   const {
     data: enrollmentsData,
@@ -66,6 +85,11 @@ export function Enrollments() {
   useEffect(() => {
     if (enrollmentsData) {
       setEnrollments(enrollmentsData);
+      const targetGrades = enrollmentsData.map((enrollment) => {
+        return { enrollmentId: enrollment.id, targetGrade: "50" };
+      });
+      console.log(targetGrades);
+      setTargetGrades(targetGrades);
     }
   }, [enrollmentsData]);
 
@@ -86,13 +110,14 @@ export function Enrollments() {
     // updatedScores[courseIndex][assessmentIndex] = score;
     setScore(enrollmentId, assessmentId, mark);
     updateAssessment.mutate({ id: assessmentId, mark });
-    console.log(mark);
+    // console.log(mark);
     // setScores(Number(score));
   };
 
   const handleEnrollmentDelete = (enrollmentId: string) => {
     deleteEnrollment.mutate({ enrollmentId });
   };
+
   const handleShowRankDialog = async (assessment: Assessment) => {
     setCurrentAssessment(assessment);
     setShowRankDialog(true);
@@ -104,6 +129,19 @@ export function Enrollments() {
     setShowRankDialog(false);
     setCurrentAssessment(null);
   };
+
+  const handleTargetGradeChange = (enrollmentId: string, value: string) => {
+    if (!targetGrades) return;
+    // Create a new array with the updated target grades
+    const updatedGrades = targetGrades.map((grade) =>
+      grade.enrollmentId === enrollmentId
+        ? { ...grade, targetGrade: value }
+        : grade,
+    );
+
+    setTargetGrades(updatedGrades);
+  };
+
   const calculateTotalScore = (assessments: any[]) => {
     return assessments.reduce((total, assessment, index) => {
       return total + assessment.mark * parseFloat(assessment.weight);
@@ -113,8 +151,8 @@ export function Enrollments() {
   return (
     <div className="container mx-auto py-8">
       <div className="flex">
-      <h1 className="mb-6 text-3xl font-bold">My Course Enrollments</h1>
-      <SearchCourse />
+        <h1 className="mb-6 text-3xl font-bold">My Course Enrollments</h1>
+        <SearchCourse />
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {enrollments?.map((enrollment) => (
@@ -125,6 +163,44 @@ export function Enrollments() {
                   {enrollment?.course.courseCode} -{" "}
                   {enrollment?.course.courseName}
                 </CardTitle>
+                <TargetGradeSelect
+                  selectedValue={
+                    targetGrades?.find((g) => g.enrollmentId === enrollment.id)
+                      ?.targetGrade || "50"
+                  }
+                  onValueChange={(value) => {
+                    console.log(targetGrades);
+                    handleTargetGradeChange(enrollment.id, value);
+                  }}
+                />
+                {/* <Select
+                  defaultValue={"4"}
+                  onValueChange={
+                    (value) => console.log("value")
+                    // handleTargetGradeChange(
+                    //   course.id,
+                    //   course.assessments[0].id,
+                    //   parseInt(value),
+                    // )
+                  }
+                  // className="w-20"
+                >
+                  <SelectTrigger className="w-15">
+                    <SelectValue placeholder="Target Grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Target Grade</SelectLabel>
+                      <SelectItem value="0">1 (0-19%)</SelectItem>
+                      <SelectItem value="20">2 (20-44%)</SelectItem>
+                      <SelectItem value="45">3 (45-49%)</SelectItem>
+                      <SelectItem value="50">4 (50-64%)</SelectItem>
+                      <SelectItem value="65">5 (65-74%)</SelectItem>
+                      <SelectItem value="75">6 (75-84%)</SelectItem>
+                      <SelectItem value="85">7 (85-100%)</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select> */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -186,7 +262,23 @@ export function Enrollments() {
               </div>
             </CardContent>
             <CardFooter>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col justify-between">
+                {enrollment.assessments.filter(
+                  ({ mark }) => mark === null || mark === 0,
+                ).length == 1 && (
+                  <div className="font-medium">
+                    Grade required to hit target:{" "}
+                    {calculateRequiredMark(
+                      enrollment.assessments,
+                      Number(
+                        targetGrades &&
+                          targetGrades!.find(
+                            (target) => target!.enrollmentId === enrollment.id,
+                          )?.targetGrade,
+                      ),
+                    ) + "%"}
+                  </div>
+                )}
                 <div className="font-medium">Overall Grade:</div>
                 <div className="text-2xl font-bold">
                   {calculateTotalScore(enrollment!.assessments).toFixed(2)}
