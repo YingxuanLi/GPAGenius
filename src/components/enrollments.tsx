@@ -15,6 +15,7 @@ import { useEnrollmentStore } from "~/app/stores/enrollment-store";
 import { Button } from "./ui/button";
 import { CrossIcon } from "./icons/cross-icon";
 import { InfoIcon } from "./icons/info-icon";
+import { TriangleAlertIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -142,13 +143,21 @@ export function Enrollments() {
                     key={assessment.id}
                     className="flex items-center justify-between"
                   >
-                    <div>
-                      <div className="font-medium">
-                        {assessment.assignmentName}
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <div className="font-medium">
+                          {assessment.assignmentName}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Weight: {assessment.weight * 100}%
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        Weight: {assessment.weight * 100}%
-                      </div>
+                      {/* @ts-ignore */}
+                      {(enrollment.course.assessments.find(
+                        (a: any) => a.title === assessment.assignmentName,
+                      ).isHurdled) && (
+                        <TriangleAlertIcon className="h-4 w-4 text-red-500" />
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       {/* TODO: better handle user input and api calls */}
