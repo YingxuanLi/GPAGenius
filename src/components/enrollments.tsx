@@ -197,19 +197,16 @@ export function Enrollments() {
             <DialogHeader>
               <DialogTitle>Assessment Rank</DialogTitle>
               <DialogDescription>
-                The rank of {currentAssessment?.assignmentName} within the
-                cohort who uses this app.
+                The rank of {currentAssessment?.assignmentName} for{" "}
+                {
+                  enrollments?.find(
+                    (e) => e?.id === currentAssessment.enrollmentId,
+                  )?.course.courseCode
+                }{" "}
+                within the cohort who uses this app.
               </DialogDescription>
             </DialogHeader>
             <div className="px-4 py-6">
-              <div className="flex items-center justify-between">
-                <div className="font-medium">Rank:</div>
-                <div className="text-2xl font-bold">3rd</div>
-              </div>
-              <div className="mt-4 flex items-center justify-between">
-                <div className="font-medium">Average Score:</div>
-                <div className="text-2xl font-bold">85%</div>
-              </div>
               <div className="mt-4 flex items-center justify-between">
                 <div className="font-medium">You beat:</div>
                 <div className="text-2xl font-bold">
