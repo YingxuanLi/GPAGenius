@@ -12,7 +12,7 @@ export const assessmentFieldsSchema = z.object({
   assignmentName: z.string(),
   weight: z.number(),
   mark: z.number().optional(),
-  maxMark: z.number().optional(),
+  // maxMark: z.number().optional(),
 });
 
 const createAssessmentInputSchema = assessmentFieldsSchema;
@@ -26,19 +26,18 @@ const updateAssessmentInputSchema = assessmentFieldsSchema
     assignmentName: true,
     weight: true,
     mark: true,
-    maxMark: true,
+    // maxMark: true,
   });
 
 const prepareAssessmentData = (
   input: z.infer<typeof assessmentFieldsSchema>,
 ) => {
-  const { enrollmentId, assignmentName, weight, mark, maxMark } = input;
+  const { enrollmentId, assignmentName, weight, mark } = input;
   return {
     enrollmentId,
     assignmentName,
     weight,
     mark,
-    maxMark,
   };
 };
 

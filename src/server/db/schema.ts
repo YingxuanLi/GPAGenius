@@ -218,7 +218,7 @@ export const userAssessments = createTable("user_assessment", {
   assignmentName: varchar("assignment_name", { length: 255 }).notNull(),
   weight: real("weight").notNull(),
   mark: real("mark"),
-  maxMark: real("max_mark"),
+  // maxMark: real("max_mark"),
   enrollmentId: uuid("enrollment_id")
     .notNull()
     .references(() => enrollments.id),

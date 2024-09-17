@@ -15,7 +15,6 @@ import { useEnrollmentStore } from "~/app/stores/enrollment-store";
 import { Button } from "./ui/button";
 import { CrossIcon } from "./icons/cross-icon";
 import { InfoIcon } from "./icons/info-icon";
-import { TriangleAlertIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -33,8 +32,6 @@ type Assessment =
   RouterOutput["user"]["getUserEnrollments"][0]["assessments"][0];
 
 export function Enrollments() {
-  // const userId = "9f632171-cc4b-4210-9b72-d5466923023b";
-  const [fetchTrigger, setFetchTrigger] = useState(false);
   const [showRankDialog, setShowRankDialog] = useState<boolean>(false);
   const [currentAssessment, setCurrentAssessment] = useState<Assessment | null>(
     null,
@@ -46,7 +43,6 @@ export function Enrollments() {
     refetch: refetchEnrollments,
   } = api.user.getUserEnrollments.useQuery({ userId: "" });
 
-  //TODO: FIX THIS
   const { data: percentRank, refetch: refetchRank } =
     api.user.getUserAssessmentRankingByCourse.useQuery(
       {
@@ -100,7 +96,6 @@ export function Enrollments() {
   const handleShowRankDialog = async (assessment: Assessment) => {
     setCurrentAssessment(assessment);
     setShowRankDialog(true);
-    console.info(assessment);
     if (assessment) {
       refetchRank();
     }
@@ -117,8 +112,10 @@ export function Enrollments() {
 
   return (
     <div className="container mx-auto py-8">
+      <div className="flex">
       <h1 className="mb-6 text-3xl font-bold">My Course Enrollments</h1>
       <SearchCourse />
+      </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {enrollments?.map((enrollment) => (
           <Card key={enrollment?.id} className="h-full">
