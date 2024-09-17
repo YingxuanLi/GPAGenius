@@ -50,9 +50,8 @@ export function Enrollments() {
       {
         assessmentId: currentAssessment?.id || "",
       },
-      { enabled: !!currentAssessment },
+      { enabled: false },
     );
-
   const updateAssessment = api.user.updateUserAssessment.useMutation({
     onSuccess: async (course) => {
       console.info(`assessment updated::${JSON.stringify(course)}`);
@@ -70,10 +69,13 @@ export function Enrollments() {
     if (enrollmentsData) {
       setEnrollments(enrollmentsData);
     }
-    // if (currentAssessment) {
-    //   refetchRank();
-    // }
   }, [enrollmentsData]);
+
+  useEffect(() => {
+    if (currentAssessment) {
+      refetchRank();
+    }
+  }, [currentAssessment]);
 
   // Handle score input change
   //TODO: when user inputs a score, call updateAssessment mutation
@@ -97,7 +99,9 @@ export function Enrollments() {
     setCurrentAssessment(assessment);
     setShowRankDialog(true);
     console.info(assessment);
-    refetchRank();
+    if (assessment) {
+      refetchRank();
+    }
   };
   const handleCloseRankDialog = () => {
     setShowRankDialog(false);
@@ -153,13 +157,14 @@ export function Enrollments() {
                         min="0"
                         max="100"
                         value={assessment.mark || 0}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           handleScoreChange(
                             enrollment.id,
                             assessment.id,
                             Number(e.target.value),
-                          )
-                        }
+                          );
+                          setCurrentAssessment(assessment);
+                        }}
                         className="w-20"
                       />
 
@@ -186,7 +191,7 @@ export function Enrollments() {
           </Card>
         ))}
       </div>
-      {showRankDialog && (
+      {showRankDialog && currentAssessment && (
         <Dialog open={showRankDialog} onOpenChange={handleCloseRankDialog}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>

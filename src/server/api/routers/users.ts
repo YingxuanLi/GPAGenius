@@ -111,7 +111,11 @@ export const userRouter = createTRPCRouter({
   getUserAssessmentsByEnrollment: protectedProcedure
     .input(z.object({ enrollmentId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      return await getAssessmentsByEnrollment(ctx, input.enrollmentId);
+      const assessments = await getAssessmentsByEnrollment(
+        ctx,
+        input.enrollmentId,
+      );
+      return assessments ?? null;
     }),
   createUserEnrollment: protectedProcedure
     .input(z.object({ courseId: z.string().uuid() }))
