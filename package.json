@@ -16,7 +16,10 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.1.0",
     "@metamorph/trpc-panel": "^1.0.5",
+    "@radix-ui/react-dialog": "^1.1.1",
+    "@radix-ui/react-select": "^2.1.1",
     "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tooltip": "^1.1.2",
     "@t3-oss/env-nextjs": "^0.10.1",
     "@tanstack/react-query": "^5.50.0",
     "@trpc/client": "^11.0.0-rc.498",
@@ -38,7 +41,9 @@
     "superjson": "^2.2.1",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.23.3"
+    "use-debounce": "^10.0.3",
+    "zod": "^3.23.3",
+    "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@types/cheerio": "0.22.35",

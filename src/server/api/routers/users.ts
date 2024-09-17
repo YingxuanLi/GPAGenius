@@ -1,9 +1,10 @@
 import { and, eq, isNull, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { userAssessments, enrollments } from "~/server/db/schema";
+import { userAssessments, enrollments, courses } from "~/server/db/schema";
 import { Context } from "~/trpc/server";
 import { validateAssessmentsWeight } from "~/server/utils/validateAssessmentsWeight";
+import { sql } from "drizzle-orm";
 
 // Shared input schema for fields common to both create and update
 export const assessmentFieldsSchema = z.object({
@@ -11,7 +12,7 @@ export const assessmentFieldsSchema = z.object({
   assignmentName: z.string(),
   weight: z.number(),
   mark: z.number().optional(),
-  maxMark: z.number().optional(),
+  // maxMark: z.number().optional(),
 });
 
 const createAssessmentInputSchema = assessmentFieldsSchema;
@@ -25,19 +26,18 @@ const updateAssessmentInputSchema = assessmentFieldsSchema
     assignmentName: true,
     weight: true,
     mark: true,
-    maxMark: true,
+    // maxMark: true,
   });
 
 const prepareAssessmentData = (
   input: z.infer<typeof assessmentFieldsSchema>,
 ) => {
-  const { enrollmentId, assignmentName, weight, mark, maxMark } = input;
+  const { enrollmentId, assignmentName, weight, mark } = input;
   return {
     enrollmentId,
     assignmentName,
     weight,
     mark,
-    maxMark,
   };
 };
 
@@ -102,6 +102,7 @@ export const userRouter = createTRPCRouter({
           and(eq(enrollments.userId, userId), isNull(enrollments.deletedAt)),
         with: {
           assessments: true,
+          course: true,
         },
       });
       return userEnrollments ?? null;
@@ -109,20 +110,57 @@ export const userRouter = createTRPCRouter({
   getUserAssessmentsByEnrollment: protectedProcedure
     .input(z.object({ enrollmentId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      return await getAssessmentsByEnrollment(ctx, input.enrollmentId);
+      const assessments = await getAssessmentsByEnrollment(
+        ctx,
+        input.enrollmentId,
+      );
+      return assessments ?? null;
     }),
-  createUserEnrollments: protectedProcedure
+  createUserEnrollment: protectedProcedure
     .input(z.object({ courseId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const userEnrollments = ctx.db
-        .insert(enrollments)
-        .values({
-          userId,
-          courseId: input.courseId,
-        })
-        .returning();
-      return userEnrollments ?? null;
+      const userEnrollment = (
+        await ctx.db
+          .insert(enrollments)
+          .values({
+            userId,
+            courseId: input.courseId,
+          })
+          .returning()
+      )[0];
+
+      if (!userEnrollment) {
+        throw new Error("Failed to enroll!");
+      }
+      // get course assessments
+      const courseAssessments = (
+        await ctx.db
+          .select({ assessments: courses.assessments })
+          .from(courses)
+          .where(eq(courses.id, input.courseId))
+      )[0]?.assessments as any;
+      // map them to user assessments
+      const parsePercentageToDecimal = (percentage: string) => {
+        const decimal = parseFloat(percentage.replace("%", "")) / 100;
+        return decimal;
+      };
+
+      courseAssessments.forEach(async (assessment: any) => {
+        const assessmentInput = {
+          enrollmentId: userEnrollment.id,
+          weight: parsePercentageToDecimal(assessment.weight),
+          assignmentName: assessment.title,
+          mark: 0,
+        };
+
+        const assessments = await ctx.db
+          .insert(userAssessments)
+          .values(assessmentInput)
+          .returning();
+      });
+      console.log(courseAssessments);
+      return userEnrollment ?? null;
     }),
   createUserAssessments: protectedProcedure
     .input(z.array(createAssessmentInputSchema))
@@ -207,6 +245,7 @@ export const userRouter = createTRPCRouter({
       const assessmentsIdsToBeDeleted = (
         await getAssessmentsByEnrollment(ctx, input.enrollmentId)
       )?.map((a) => a.id);
+      if (!assessmentsIdsToBeDeleted) return;
       const deletedAssessments = await deleteAssessments(
         ctx,
         assessmentsIdsToBeDeleted || [],
@@ -233,5 +272,57 @@ export const userRouter = createTRPCRouter({
     .input(z.object({ assessmentIds: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
       return await deleteAssessments(ctx, input.assessmentIds);
+    }),
+  // assessment ranking
+  getUserAssessmentRankingByCourse: protectedProcedure
+    .input(z.object({ assessmentId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // Query to calculate ranking of each user's assessments by courseId
+      // TODO: Maybe redesign the way to get assignment, course assignment comes from jsonb which we can't tell assignment by id,
+      // thus we can only partition by assignment with course id
+      // TODO: alternatively, we can store normalised rank in db and use a procedure to calculate,
+      // tho this will increase storage and insert cost
+      const assessmentWithCourse = await ctx.db.query.userAssessments.findFirst(
+        {
+          columns: {
+            id: true,
+            assignmentName: true,
+          },
+          with: {
+            enrollment: {
+              columns: {
+                courseId: true,
+              },
+            },
+          },
+          where: (userAssessments, { eq }) =>
+            eq(userAssessments.id, input.assessmentId),
+        },
+      );
+      if (!assessmentWithCourse || !assessmentWithCourse.id) {
+        throw Error("assessment with provided ID not found");
+      }
+      const result = (
+        await ctx.db.execute(
+          sql.raw(`
+          select rank
+            from (select *, percent_rank() over (order by mark) as rank
+      from (select enrollment_id,
+                   user_assessment.id as aid,
+                   assignment_name,
+                   course_id,
+                   mark
+            from user_assessment
+                     join enrollment on user_assessment.enrollment_id = enrollment.id
+                     join course on enrollment.course_id = course.id
+            where course_id = '${assessmentWithCourse?.enrollment.courseId}'
+              and assignment_name = '${assessmentWithCourse?.assignmentName}') as uaec) assessments_ranks
+        where assessments_ranks.aid = '${assessmentWithCourse?.id}';
+        `),
+        )
+      )[0];
+      return {
+        rank: (result?.rank as number) || -1,
+      };
     }),
 });

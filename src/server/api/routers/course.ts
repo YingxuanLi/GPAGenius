@@ -1,3 +1,4 @@
+import { and, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   createTRPCRouter,
@@ -65,14 +66,71 @@ export const courseRouter = createTRPCRouter({
         year: z.number(),
         credit: z.number().min(0),
         description: z.string().optional(),
-        assessments: z.array(assessmentDetailSchema), // Adjust according to the structure of assessments
+        assessments: z.array(assessmentDetailSchema),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const course = await insertCourse({ ctx, input });
       return course ?? null;
     }),
+  insertParsedCourse: publicProcedure
+    .input(
+      z.object({
+        universityId: z.string().uuid().optional(),
+        courseCode: z.string(),
+        year: z.number(),
+        semester: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const universityId = ctx.session?.user.universityId || input.universityId;
+      if (!universityId) {
+        throw Error("University ID is required!");
+      }
+      const { courseName, courseCode, units, assessments } =
+        await getCourseAndAssessments(
+          input.courseCode,
+          input.semester,
+          input.year.toString(),
+        );
+      const formattedInput = {
+        universityId,
+        courseCode: courseCode ? courseCode : input.courseCode,
+        courseName,
+        credit: Number(units),
+        assessments,
+        year: input.year,
+        semester: input.semester,
+        createdBy: "system",
+        updatedBy: "system",
+      };
+      const course = await insertCourse({ ctx, input: formattedInput });
+      return course ?? null;
+    }),
 
+  getAllCoursesByUniversity: publicProcedure
+    .input(z.object({ universityId: z.string().uuid().optional() }))
+    .query(async ({ ctx, input }) => {
+      const universityId = ctx.session?.user.universityId || input.universityId;
+      if (!universityId) {
+        throw Error("UniversityId is required");
+      }
+      const courses = await ctx.db.query.courses.findMany({
+        columns: {
+          id: true,
+          courseCode: true,
+          courseName: true,
+          description: true,
+          credit: true,
+        },
+        where: (course, { eq }) =>
+          and(
+            eq(course.createdBy, "system"),
+            eq(course.universityId, universityId),
+          ),
+      });
+      return courses ?? null;
+    }),
   getCourseById: publicProcedure
     .input(z.object({ courseId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -81,7 +139,6 @@ export const courseRouter = createTRPCRouter({
       });
       return course ?? null;
     }),
-
   getCourseByCodeAndSemester: publicProcedure
     .input(
       z.object({
@@ -100,7 +157,7 @@ export const courseRouter = createTRPCRouter({
         ctx?.session?.user.universityId ||
         (ctx?.headers.get("universityId") as string) ||
         input.universityId!;
-        
+
       let course = await ctx.db.query.courses.findFirst({
         where: (courses, { eq, and }) =>
           and(
@@ -110,27 +167,44 @@ export const courseRouter = createTRPCRouter({
             eq(courses.semester, input.semester),
           ),
       });
-      if (!course) {
-        const { courseName, courseCode, units, assessments } =
-          await getCourseAndAssessments(
-            input.courseCode,
-            input.semester,
-            input.year.toString(),
-          );
-        const formattedInput = {
-          //TODO: refactor this to get uni id
-          universityId: "ae376fd2-a7c7-4f08-a480-5f6d99873c95",
-          courseCode: courseCode ? courseCode : input.courseCode,
-          courseName,
-          credit: Number(units),
-          assessments,
-          year: input.year,
-          semester: input.semester,
-          createdBy: "system",
-          updatedBy: "system",
-        };
-        course = await insertCourse({ ctx, input: formattedInput });
-      }
       return course ?? null;
+    }),
+  autocomplete: publicProcedure
+    .input(
+      z.object({
+        searchTerm: z.string(),
+        universityId: z.string().uuid().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.session?.user?.universityId && !input.universityId) {
+        throw new Error("universityId is required");
+      }
+
+      const universityId =
+        ctx?.session?.user.universityId ||
+        (ctx?.headers.get("universityId") as string) ||
+        input.universityId!;
+
+      if (!input.searchTerm) {
+        throw new Error("searchTerm is required for autocomplete");
+      }
+
+      const match = await ctx.db.execute(
+        sql.raw(
+          `SELECT id, course_name, course_code FROM course 
+           WHERE university_id = '${universityId}'
+           and fts @@ to_tsquery('${input.searchTerm}:*');`,
+        ),
+      );
+      const matchedCourses = match.map((c) => {
+        return {
+          id: c.id as string,
+          courseCode: c.course_code as string,
+          courseName: c.course_name as string,
+        };
+      });
+
+      return matchedCourses ?? [];
     }),
 });
