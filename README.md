@@ -1,11 +1,11 @@
-<p><a target="_blank" href="https://app.eraser.io/workspace/5Ivho9JUgVZgpx1BsioF" id="edit-in-eraser-github-link"><img alt="Edit in Eraser" src="https://firebasestorage.googleapis.com/v0/b/second-petal-295822.appspot.com/o/images%2Fgithub%2FOpen%20in%20Eraser.svg?alt=media&amp;token=968381c8-a7e7-472a-8ed6-4a6626da5501"></a></p>
-
 # GPA Genius Demo
-Try it: [﻿GPA Genius](https://gpa-genius.vercel.app/) 
+
+Try it: [GPA Genius](https://gpa-genius.vercel.app/)
 
 ## Contributors
 - **Libby Liu** (@Manyanggg): Software Engineer @NetEngine, UQ Alumna
 - **Benson Li** (@YingxuanLi): Software Engineer @Codafication, UQer, Badminton Player, Part-Time Procrastinator
+
 ## Overview
 **GPA Genius** helps university students calculate their GPA and provides insights into their academic performance. The platform includes features such as course profile parsing, GPA calculation, percentile rankings for assessment items, and secure user authentication.
 
@@ -13,17 +13,19 @@ Try it: [﻿GPA Genius](https://gpa-genius.vercel.app/)
 ![GPA Genius Database Design](/.eraser/5Ivho9JUgVZgpx1BsioF___6yy2RtPnVvYhBxKDqZ9DwUbJIj23___wq8cGn4BYkcc2BEWfIYxv.png "GPA Genius Database Design")
 
 ## Features
+
 ### 1. **Course Parser**
 The course parser leverages **Cheerio** to extract data from UQ course profiles, including:
-
 - Course Name
 - Course Code
 - Assessment Items
 
-Example Output: 
+**Example Output:**
+
 <details>
-  <summary>Assessment for ENGG1300 </summary>
-```js
+  <summary>Assessment for ENGG1300</summary>
+
+```json
 [
   {
     "mode": "Written",
@@ -77,6 +79,7 @@ Example Output:
   }
 ]
 ```
+
 </details>
 
 ### 2. **Percentile Ranking**
@@ -98,16 +101,27 @@ FROM (SELECT *,
               AND assignment_name = '${assessmentWithCourse?.assignmentName}') AS uaec) AS assessments_ranks
 WHERE assessments_ranks.aid = '${assessmentWithCourse?.id}';
 ```
+
 ### 3. **User Authentication**
 GPA Genius handles user authentication via **NextAuth.js**, using Google SSO for secure and seamless login.
 
-### 4. **AutoComplete**
-Users can search and select courses through an autocomplete box, powered by PostgreSQL’s Full-Text Search (FTS) feature. While caching the course data on the frontend might have been a more efficient approach, implementing FTS allowed us to explore the impressive capabilities PostgreSQL offers for advanced search functionality—a valuable learning experience.
+### 4. **Autocomplete**
+Users can search and select courses through an autocomplete box, powered by PostgreSQL’s Full-Text Search (FTS) feature. While caching the course data on the frontend might have been more efficient, implementing FTS allowed us to explore the powerful search capabilities PostgreSQL offers—a valuable learning experience.
 
 ## Tech Overview
-![image.png](/.eraser/5Ivho9JUgVZgpx1BsioF___6yy2RtPnVvYhBxKDqZ9DwUbJIj23___fT92kbggO_BBwmXEjNmQg.png "image.png")
+![Tech Overview](/.eraser/5Ivho9JUgVZgpx1BsioF___6yy2RtPnVvYhBxKDqZ9DwUbJIj23___fT92kbggO_BBwmXEjNmQg.png "Tech Overview")
 
 ## Installation and Setup
-1. **Install Bun**:curl -fsSL [﻿https://bun.sh/install](https://bun.sh/install)  | bash
-2. **Start Development**:This will start the development server on `localhost:3001`  .bun install
-bun dev
+
+1. **Install Bun**:
+   ```bash
+   curl -fsSL https://bun.sh/install | bash
+   ```
+
+2. **Start Development**:
+   ```bash
+   bun install
+   bun dev
+   ```
+
+   This will start the development server on `localhost:3001`.
