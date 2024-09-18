@@ -19,7 +19,6 @@ The course parser leverages **Cheerio** to extract data from UQ course profiles,
 - Course Name
 - Course Code
 - Assessment Items
-This information is used to create a personalized list of assessments for each course the user is enrolled in.
 ### 2. **Percentile Ranking**
 Students can view their percentile ranking for each assessment item. The ranking is calculated using an SQL query to determine their performance relative to others in the course:
 
