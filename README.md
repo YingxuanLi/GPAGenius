@@ -1,29 +1,70 @@
-# Create T3 App
+<p><a target="_blank" href="https://app.eraser.io/workspace/5Ivho9JUgVZgpx1BsioF" id="edit-in-eraser-github-link"><img alt="Edit in Eraser" src="https://firebasestorage.googleapis.com/v0/b/second-petal-295822.appspot.com/o/images%2Fgithub%2FOpen%20in%20Eraser.svg?alt=media&amp;token=968381c8-a7e7-472a-8ed6-4a6626da5501"></a></p>
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+# GPA Genius Demo Doc
+## Contributors
+Libby Liu: @Manyanggg Software Engineer @NetEngine, UQer 
 
-## What's next? How do I make an app with this?
+Benson Li: @YingxuanLi Software Engineer @Codafication, UQer, badminton player, part-time procrastinator.
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+## Overview
+This project aims to assist university students in calculating their GPA grades. It includes features for parsing course profiles, calculating percentile rankings for assessment items, and handling user authentication.
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Features
+### Course Parser
+The course parser uses Cheerio to extract course profiles from UQ, including:
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+- Course Name
+- Course Code
+- Assessment Items
+These details are utilised to create user assessment items for their course enrollments.
+### Ranking
+Users can view the percentile ranking for each of their assessment items. This is achieved through an SQL query:
 
-## Learn More
+```
+sql.raw(`
+    select rank
+      from (select *, percent_rank() over (order by mark) as rank
+from (select enrollment_id,
+             user_assessment.id as aid,
+             assignment_name,
+             course_id,
+             mark
+      from user_assessment
+               join enrollment on user_assessment.enrollment_id = enrollment.id
+               join course on enrollment.course_id = course.id
+      where course_id = '${assessmentWithCourse?.enrollment.courseId}'
+        and assignment_name = '${assessmentWithCourse?.assignmentName}') as uaec) assessments_ranks
+  where assessments_ranks.aid = '${assessmentWithCourse?.id}';
+  `)
+```
+## DB Design
+![db-diagram-gpa-genius.png](/.eraser/5Ivho9JUgVZgpx1BsioF___6yy2RtPnVvYhBxKDqZ9DwUbJIj23___7TlxVJt3jbgmjK8J8kfUt.png "db-diagram-gpa-genius.png")
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## Technologies Used (The t3 stack)
+### Frontend
+- TypeScript
+- Next.js
+- Shadcn 
+- tailwind
+### Backend
+- TRPC - for e2e typesafety
+- Supabase (Postgres) 
+- Drizzle-ORM
+### Auth
+- Next-auth with Google SSO
+### HTML Parsing
+- Cheerio
+### Deployment:
+- Vercel
+## Installation and Setup
+Install Bun: `curl -fsSL https://bun.sh/install | bash` 
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+To start development:
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+`bun install` THEN `bun dev` 
 
-## How do I deploy this?
+This will start a development server on localhost:3001
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+
+
+<!--- Eraser file: https://app.eraser.io/workspace/5Ivho9JUgVZgpx1BsioF --->
