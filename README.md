@@ -1,9 +1,5 @@
 <p><a target="_blank" href="https://app.eraser.io/workspace/5Ivho9JUgVZgpx1BsioF" id="edit-in-eraser-github-link"><img alt="Edit in Eraser" src="https://firebasestorage.googleapis.com/v0/b/second-petal-295822.appspot.com/o/images%2Fgithub%2FOpen%20in%20Eraser.svg?alt=media&amp;token=968381c8-a7e7-472a-8ed6-4a6626da5501"></a></p>
 
-Here’s an improved version of the **GPA Genius Demo Doc** with enhanced clarity, formatting, and structure:
-
----
-
 # GPA Genius Demo
 Try it: [﻿GPA Genius](https://gpa-genius.vercel.app/) 
 
@@ -16,8 +12,6 @@ Try it: [﻿GPA Genius](https://gpa-genius.vercel.app/)
 ## Database Design
 ![GPA Genius Database Design](/.eraser/5Ivho9JUgVZgpx1BsioF___6yy2RtPnVvYhBxKDqZ9DwUbJIj23___wq8cGn4BYkcc2BEWfIYxv.png "GPA Genius Database Design")
 
-
-
 ## Features
 ### 1. **Course Parser**
 The course parser leverages **Cheerio** to extract data from UQ course profiles, including:
@@ -26,7 +20,6 @@ The course parser leverages **Cheerio** to extract data from UQ course profiles,
 - Course Code
 - Assessment Items
 This information is used to create a personalized list of assessments for each course the user is enrolled in.
-
 ### 2. **Percentile Ranking**
 Students can view their percentile ranking for each assessment item. The ranking is calculated using an SQL query to determine their performance relative to others in the course:
 
@@ -55,9 +48,17 @@ Users can search and select courses through an autocomplete box, powered by Post
 ## Technologies
 ![image.png](/.eraser/5Ivho9JUgVZgpx1BsioF___6yy2RtPnVvYhBxKDqZ9DwUbJIj23___sGmixv3Hg7dpOAgdlEkli.png "image.png")
 
-
-
 ## Installation and Setup
-1. **Install Bun**:curl -fsSL https://bun.sh/install | bash
-2. **Start Development**:This will start the development server on `localhost:3001` .bun install
+1. **Install Bun**:curl -fsSL [﻿https://bun.sh/install](https://bun.sh/install)  | bash
+2. **Start Development**:This will start the development server on `localhost:3001`  .bun install
 bun dev
+
+
+
+<!-- eraser-additional-content -->
+## Diagrams
+<!-- eraser-additional-files -->
+<a href="/README-cloud-architecture-1.eraserdiagram" data-element-id="3TG_Jf71JXOG1TOyms3H5"><img src="/.eraser/5Ivho9JUgVZgpx1BsioF___6yy2RtPnVvYhBxKDqZ9DwUbJIj23___---diagram----be7c09dc5e87b56fac7e71a4e2c3c048.png" alt="" data-element-id="3TG_Jf71JXOG1TOyms3H5" /></a>
+<!-- end-eraser-additional-files -->
+<!-- end-eraser-additional-content -->
+<!--- Eraser file: https://app.eraser.io/workspace/5Ivho9JUgVZgpx1BsioF --->
