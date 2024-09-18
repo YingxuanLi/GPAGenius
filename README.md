@@ -51,13 +51,3 @@ Users can search and select courses through an autocomplete box, powered by Post
 1. **Install Bun**:curl -fsSL [﻿https://bun.sh/install](https://bun.sh/install)  | bash
 2. **Start Development**:This will start the development server on `localhost:3001`  .bun install
 bun dev
-
-
-
-<!-- eraser-additional-content -->
-## Diagrams
-<!-- eraser-additional-files -->
-<a href="/README-cloud-architecture-1.eraserdiagram" data-element-id="3TG_Jf71JXOG1TOyms3H5"><img src="/.eraser/5Ivho9JUgVZgpx1BsioF___6yy2RtPnVvYhBxKDqZ9DwUbJIj23___---diagram----278d35a1c22ff17f91922a360a9ea331.png" alt="" data-element-id="3TG_Jf71JXOG1TOyms3H5" /></a>
-<!-- end-eraser-additional-files -->
-<!-- end-eraser-additional-content -->
-<!--- Eraser file: https://app.eraser.io/workspace/5Ivho9JUgVZgpx1BsioF --->
