@@ -22,7 +22,7 @@ The course parser leverages **Cheerio** to extract data from UQ course profiles,
 
 Example Output: 
 <details>
-  <summary>Assessment for ENGG1300t </summary>
+  <summary>Assessment for ENGG1300 </summary>
 ```js
 [
   {
